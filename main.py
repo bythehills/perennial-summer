@@ -48,12 +48,27 @@ def print2dList(L):
 
 def appStarted(app):
     app.mode = "gameMode"
+    app.rows = 5
+    app.cols = app.rows
+    app.board = [[0] * app.rows for row in range(app.rows)] #rows, cols have to be size 2^n + 1
+    #colorboard stores colors, app.board stores height
+    app.colorboard = [[0] * app.rows for row in range(app.rows)]
+
+
     app.cellSize = 100
-    app.rows = 15    
-    app.cols = 15
-    app.margin = 0
-    app.borderWidth = 10
-    app.board = [[0] * app.cols for row in range(app.rows)]
+    app.margin = 10
+    #initialize corner values
+    app.board[0][0] = 4
+    app.board[app.rows - 1][0] = 5
+    app.board[app.rows - 1][app.rows - 1] = 6
+    app.board[0][app.rows - 1] = 7
+    app.prevX = 200
+    app.prevY = 100
+    app.heightFac = 2
+    #now you have 32 squares, perform diamond step again (find midpoint of all 32 squares)
+    app.squareList = [(0, 0), (app.rows - 1, 0), (app.rows - 1, app.rows - 1), (0, app.rows - 1)]
+    diamondSquare(app, app.rows//2)
+
     app.color = ["#649e44", "#2f5234", "#4d9129", "#1f6129", "#136b19"]
     app.timerCount = 0
     app.playerPos = (0, 0)
@@ -67,6 +82,70 @@ def appStarted(app):
     app.prevY = 150
     app.skyColor = ["#6197ed", "#81a5de", "#aac0e3", "white" ]
     gameMode_fillBoard(app)
+
+def diamondSquare(app, step):
+    if (step == 0):
+        return
+    else:
+        rows, cols = len(app.board), len(app.board[0])
+        #go through each "square" and calculate center points, then find diamond, then add new squares into list
+        for i in range(0, len(app.squareList), 4):
+            #get four points of square - squarelist stores them (very badly)
+            #in four tuples
+            topLeftRow, topLeftCol = app.squareList[i]
+            bottomLeftRow, bottomLeftCol = app.squareList[i + 1]
+            bottomRightRow, bottomRightCol = app.squareList[i + 2]
+            topRightRow, topRightCol = app.squareList[i + 3]
+            average = (app.board[topLeftRow][topLeftCol] + app.board[bottomLeftRow][bottomLeftCol] + app.board[bottomRightRow][bottomRightCol] + app.board[topRightRow][topRightCol])//4
+            #find average of four corners, add a random value to it
+            average += random.randint(0, 10) 
+            centerRow, centerCol = app.squareList[i][0] + step, app.squareList[i][1] + step
+            app.board[centerRow][centerCol] = average
+            #NOW do square step
+            #center is step distance away from upper left square
+            center = (centerRow, centerCol)
+            calculateDiamondValues(app, i, center, step) #fill "diamond" extending out from center with average of values near it
+            addSquaresToList(app, i, center, step) #add squares to center list
+        diamondSquare(app, step//2)
+
+
+def calculateDiamondValues(app, i, center, step):
+    #first find four corners of square
+    topLeftRow, topLeftCol = app.squareList[i]
+    bottomLeftRow, bottomLeftCol = app.squareList[i + 1]
+    bottomRightRow, bottomRightCol = app.squareList[i + 2]
+    topRightRow, topRightCol = app.squareList[i + 3]
+
+
+    centerRow, centerCol = center
+    diamondLeftRow, diamondLeftCol = centerRow, centerCol - step
+    app.board[diamondLeftRow][diamondLeftCol] = (app.board[topLeftRow][topLeftCol] + app.board[bottomLeftRow][bottomLeftCol] + app.board[centerRow][centerCol])//3
+    #diamondBottom
+    app.board[centerRow + step][centerCol] = (app.board[bottomRightRow][bottomRightCol] + app.board[bottomLeftRow][bottomLeftCol] + app.board[centerRow][centerCol])//3
+    #diamondRight
+    app.board[centerRow][centerCol + step] = (app.board[topRightRow][topRightCol] + app.board[bottomLeftRow][bottomLeftCol] + app.board[centerRow][centerCol])//3
+    #diamondTop
+    app.board[centerRow - step][centerCol] = (app.board[topLeftRow][topLeftCol] + app.board[topRightRow][topRightCol] + app.board[centerRow][centerCol])//3
+
+
+
+def addSquaresToList(app, i, center, step):
+    topLeftRow, topLeftCol = app.squareList[i]
+    bottomLeftRow, bottomLeftCol = app.squareList[i + 1]
+    bottomRightRow, bottomRightCol = app.squareList[i + 2]
+    topRightRow, topRightCol = app.squareList[i + 3]
+
+    centerRow, centerCol = center
+    diamondLeftRow, diamondLeftCol = centerRow, centerCol - step
+    diamondRightRow, diamondRightCol = centerRow, centerCol + step
+    diamondBotRow, diamondBotCol = centerRow + step, centerCol
+    diamondTopRow, diamondTopCol = centerRow - step, centerCol
+
+    #add four squares for each "center" given
+    app.squareList += [(topLeftRow, topLeftCol), (diamondLeftRow, diamondLeftCol), (centerRow, centerCol), (diamondRightRow, diamondRightCol)]
+    app.squareList += [(diamondLeftRow, diamondLeftCol), (bottomLeftRow, bottomLeftCol), (diamondBotRow, diamondBotCol), (centerRow, centerCol)]
+    app.squareList += [(diamondTopRow, diamondTopCol), (centerRow, centerCol), (diamondRightRow, diamondRightCol), (topRightRow, topRightCol)]
+    app.squareList += [(centerRow, centerCol), (diamondBotRow, diamondBotCol), (bottomRightRow, bottomRightCol), (diamondLeftRow, diamondLeftCol)]
 
 
 
@@ -90,9 +169,9 @@ def gameMode_constraintsMet(app, row, col):
 
 def gameMode_expandBoard(app, dir):
     row, col = app.playerPos
-    if (dir == "left"):
-        app.board.append([0] * app.cols)
-        gameMode_fillBoard(app)
+    # if (dir == "left"):
+    #     app.board.append([0] * app.cols)
+    #     gameMode_fillBoard(app)
 
 
 def gameMode_keyPressed(app, event):
@@ -117,6 +196,13 @@ def gameMode_keyPressed(app, event):
             app.playerPos = (cx + 1, cy)
         gameMode_expandBoard(app, "left")
 
+def getCellBoundsinCartesianCoords(app, canvas, row, col):
+    x0 = col * app.cellSize + app.margin
+    x1 = (col + 1) * app.cellSize + app.margin
+    y0 = row * app.cellSize + app.margin
+    y1 = (row + 1) * app.cellSize + app.margin
+    return x0, y0, x1, y1
+    
 def gameMode_drawCell(app, canvas, row, col, color):
     x0 = col * app.cellSize + app.margin
     y0 = row * app.cellSize + app.margin
@@ -127,37 +213,84 @@ def gameMode_drawCell(app, canvas, row, col, color):
     topX, topY = gameMode_2DToIso(app, x0, y1)
     botX, botY = gameMode_2DToIso(app, x1, y0)  
     rightX,rightY = gameMode_2DToIso(app, x1, y1)
+    yOffset = app.board[row][col] * app.heightFac
+    #i can change "height" of hills by changing offset :thinking: 
+
     canvas.create_polygon(topX, topY, rightX, rightY, 
                             botX, botY, leftX, leftY, fill = color )
-    canvas.create_line(topX, topY, rightX, rightY, width = app.brdWidth)
-    canvas.create_line(rightX, rightY, botX, botY, width = app.brdWidth)
-    canvas.create_line(leftX, leftY, botX, botY, width = app.brdWidth)
-    canvas.create_line(leftX, leftY, topX, topY, width = app.brdWidth)
+    # canvas.create_line(topX, topY, rightX, rightY, width = 2)
+    # canvas.create_line(rightX, rightY, botX, botY, width = 2)
+    # canvas.create_line(leftX, leftY, botX, botY, width = 2)
+    # canvas.create_line(leftX, leftY, topX, topY, width = 2)
+
+
+    #create a "box" lol... this might be too much computations going on
+    canvas.create_polygon(leftX, leftY, leftX, leftY - yOffset, 
+                        botX, botY - yOffset, botX, botY, fill = color )
+    canvas.create_polygon(botX, botY, botX, botY - yOffset, 
+                            rightX, rightY - yOffset, rightX, rightY, fill = color )
+    canvas.create_polygon(botX, botY, botX, botY - yOffset, 
+                            topX, topY - yOffset, topX, topY, fill = color )
+    canvas.create_line(topX, topY, topX, topY - yOffset, width = 2)
+    canvas.create_line(rightX, rightY, rightX, rightY - yOffset, width = 2)
+    canvas.create_line(leftX, leftY, leftX, leftY - yOffset, width = 2)
+    canvas.create_line(botX, botY, botX, botY - yOffset, width = 2)
+
+    # canvas.create_polygon(topX, topY, rightX, rightY, 
+    #                         botX, botY, leftX, leftY, fill = color )
+    # canvas.create_polygon(topX, topY, rightX, rightY, 
+    #                         botX, botY, leftX, leftY, fill = color )
+
+    #get center of square in cartesian coordinates
+    # x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, canvas, row, col)
+    # cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+    # cx, cy = gameMode_2DToIso(app, cx, cy)
+    # cy -= app.board[row][col] #move cy up by height
+    # canvas.create_oval(cx - 1, cy - 1, cx + 1, cy + 1, fill = "black")
+    leftX, leftY = gameMode_2DToIso(app, x0, y0)
+    topX, topY = gameMode_2DToIso(app, x0, y1)
+    botX, botY = gameMode_2DToIso(app, x1, y0)  
+    rightX, rightY = gameMode_2DToIso(app, x1, y1)
+    leftY -= yOffset
+    topY -= yOffset
+    botY -= yOffset
+    rightY -= yOffset
+
+    #draw "height"
+    canvas.create_polygon(topX, topY, rightX, rightY, 
+                            botX, botY, leftX, leftY, fill = color )
+    canvas.create_line(topX, topY, rightX, rightY, width = 2)
+    canvas.create_line(rightX, rightY, botX, botY, width = 2)
+    canvas.create_line(leftX, leftY, botX, botY, width = 2)
+    canvas.create_line(leftX, leftY, topX, topY, width = 2)
 
 def gameMode_drawPlayer(app, canvas):
     row, col = app.playerPos
     x = col * app.cellSize
     y = row * app.cellSize
+    yOffset = app.board[row][col] * app.heightFac
     x, y = gameMode_2DToIso(app, x, y)
+    y += app.cellSize//2
+    # y -= yOffset//2
     canvas.create_oval(x - 10, y - 10, x + 10, y + 10, fill = "white")
     #gameMode_drawCell(app, canvas, row, col, "white")
 
 
 #Fills board at beginning with colors, also called whenever new rows are added
 def gameMode_fillBoard(app):
-    rows, cols = len(app.board), len(app.board[0])
+    rows, cols = len(app.colorboard), len(app.colorboard[0])
     for row in range(rows):
         for col in range(cols):
-            if app.board[row][col] == 0:
+            if app.colorboard[row][col] == 0:
                 index = random.randint(0, len(app.color) - 1)
-                app.board[row][col] = app.color[index]
+                app.colorboard[row][col] = app.color[index]
             
 
 def gameMode_drawBoard(app, canvas):
     rows, cols = len(app.board), len(app.board[0])
     for row in range(rows):
         for col in range(cols):
-            gameMode_drawCell(app, canvas, row, col, app.board[row][col])
+            gameMode_drawCell(app, canvas, row, col, app.colorboard[row][col])
 
 # def gameMode_drawObstacles(app, canvas):
 #     for obs in app.obsList:

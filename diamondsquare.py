@@ -3,25 +3,21 @@ import random
 
 #credits: me, hopefully
 def appStarted(app):
-    app.board = [[0] * 17 for row in range(17)] #rows, cols have to be size 2^n - 1
-    #find the midpoint of four corners, set it as average of four corners + a random value
-    #from midpoint, go out to left, right, top, bottom to form a "diamond"
-    #each point in diamond is average of values near it
-    app.brdWidth = 3
-    app.rows = 17
-    app.cols = 17
-    app.cellSize = 30
+    app.board = [[0] * 33 for row in range(33)] #rows, cols have to be size 2^n + 1
+    app.rows = 33
+    app.cols = 33
+    app.cellSize = 40
     app.margin = 10
     #initialize corner values
     app.board[0][0] = 4
-    app.board[16][0] = 5
-    app.board[16][16] = 6
-    app.board[0][16] = 7
+    app.board[32][0] = 5
+    app.board[32][32] = 6
+    app.board[0][32] = 7
     app.prevX = 200
     app.prevY = 100
-    #now you have 4 squares, perform diamond step again (find midpoint of all 4 squares)
-    app.squareList = [(0, 0), (16, 0), (16, 16), (0, 16)]
-    diamondSquare(app, 8)
+    #now you have 32 squares, perform diamond step again (find midpoint of all 32 squares)
+    app.squareList = [(0, 0), (32, 0), (32, 32), (0, 32)]
+    diamondSquare(app, 16)
 
 def repr2dList(L):
     if (L == []): return '[]'
@@ -51,7 +47,7 @@ def print2dList(L):
 
 def diamondSquare(app, step):
     if (step == 0):
-        print(print2dList(app.board))
+        return
     else:
         rows, cols = len(app.board), len(app.board[0])
         #go through each "square" and calculate center points, then find diamond, then add new squares into list
@@ -127,6 +123,11 @@ def TwoDToIso(app, x, y):
 
 
 def getCellBoundsinCartesianCoords(app, canvas, row, col):
+    x0 = col * app.cellSize + app.margin
+    x1 = (col + 1) * app.cellSize + app.margin
+    y0 = row * app.cellSize + app.margin
+    y1 = (row + 1) * app.cellSize + app.margin
+    return x0, y0, x1, y1
     
 def drawCell(app, canvas, row, col, color):
     x0 = col * app.cellSize + app.margin
@@ -138,14 +139,56 @@ def drawCell(app, canvas, row, col, color):
     topX, topY = TwoDToIso(app, x0, y1)
     botX, botY = TwoDToIso(app, x1, y0)  
     rightX,rightY = TwoDToIso(app, x1, y1)
-    #get center of square in cartesian coordinates
-    cx, cy = ()
+    yOffset = app.board[row][col] 
+    #i can change "height" of hills by changing offset :thinking: 
+
     canvas.create_polygon(topX, topY, rightX, rightY, 
-                            botX, botY, leftX, leftY, fill = "white" )
-    canvas.create_line(topX, topY, rightX, rightY, width = app.brdWidth)
-    canvas.create_line(rightX, rightY, botX, botY, width = app.brdWidth)
-    canvas.create_line(leftX, leftY, botX, botY, width = app.brdWidth)
-    canvas.create_line(leftX, leftY, topX, topY, width = app.brdWidth)
+                            botX, botY, leftX, leftY, fill = "blue" )
+    # canvas.create_line(topX, topY, rightX, rightY, width = 2)
+    # canvas.create_line(rightX, rightY, botX, botY, width = 2)
+    # canvas.create_line(leftX, leftY, botX, botY, width = 2)
+    # canvas.create_line(leftX, leftY, topX, topY, width = 2)
+
+
+    #create a "box" lol... this might be too much computations going on
+    canvas.create_polygon(leftX, leftY, leftX, leftY - yOffset, 
+                        botX, botY - yOffset, botX, botY, fill = "blue" )
+    canvas.create_polygon(botX, botY, botX, botY - yOffset, 
+                            rightX, rightY - yOffset, rightX, rightY, fill = "blue" )
+    canvas.create_polygon(botX, botY, botX, botY - yOffset, 
+                            topX, topY - yOffset, topX, topY, fill = "blue" )
+    canvas.create_line(topX, topY, topX, topY - yOffset, width = 2)
+    canvas.create_line(rightX, rightY, rightX, rightY - yOffset, width = 2)
+    canvas.create_line(leftX, leftY, leftX, leftY - yOffset, width = 2)
+    canvas.create_line(botX, botY, botX, botY - yOffset, width = 2)
+
+    # canvas.create_polygon(topX, topY, rightX, rightY, 
+    #                         botX, botY, leftX, leftY, fill = "blue" )
+    # canvas.create_polygon(topX, topY, rightX, rightY, 
+    #                         botX, botY, leftX, leftY, fill = "blue" )
+
+    #get center of square in cartesian coordinates
+    # x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, canvas, row, col)
+    # cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+    # cx, cy = TwoDToIso(app, cx, cy)
+    # cy -= app.board[row][col] #move cy up by height
+    # canvas.create_oval(cx - 1, cy - 1, cx + 1, cy + 1, fill = "black")
+    leftX, leftY = TwoDToIso(app, x0, y0)
+    topX, topY = TwoDToIso(app, x0, y1)
+    botX, botY = TwoDToIso(app, x1, y0)  
+    rightX, rightY = TwoDToIso(app, x1, y1)
+    leftY -= yOffset
+    topY -= yOffset
+    botY -= yOffset
+    rightY -= yOffset
+
+    #draw "height"
+    canvas.create_polygon(topX, topY, rightX, rightY, 
+                            botX, botY, leftX, leftY, fill = "blue" )
+    canvas.create_line(topX, topY, rightX, rightY, width = 2)
+    canvas.create_line(rightX, rightY, botX, botY, width = 2)
+    canvas.create_line(leftX, leftY, botX, botY, width = 2)
+    canvas.create_line(leftX, leftY, topX, topY, width = 2)
 
 
 def drawBoard(app, canvas):
