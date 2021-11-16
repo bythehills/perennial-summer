@@ -48,7 +48,8 @@ def print2dList(L):
 
 def appStarted(app):
     app.mode = "gameMode"
-    app.rows = 5
+    #CHANGE THIS TO ANY NUM X WHERE X = 2^n + 1 TO CHANGE ALL OTHER VARS
+    app.rows = 33
     app.cols = app.rows
     app.board = [[0] * app.rows for row in range(app.rows)] #rows, cols have to be size 2^n + 1
     #colorboard stores colors, app.board stores height
@@ -58,13 +59,13 @@ def appStarted(app):
     app.cellSize = 100
     app.margin = 10
     #initialize corner values
-    app.board[0][0] = 4
+    app.board[0][0] = 15
     app.board[app.rows - 1][0] = 5
-    app.board[app.rows - 1][app.rows - 1] = 6
+    app.board[app.rows - 1][app.rows - 1] = 9
     app.board[0][app.rows - 1] = 7
     app.prevX = 200
     app.prevY = 100
-    app.heightFac = 2
+    app.heightFac = 3
     #now you have 32 squares, perform diamond step again (find midpoint of all 32 squares)
     app.squareList = [(0, 0), (app.rows - 1, 0), (app.rows - 1, app.rows - 1), (0, app.rows - 1)]
     diamondSquare(app, app.rows//2)
@@ -213,33 +214,16 @@ def gameMode_drawCell(app, canvas, row, col, color):
     topX, topY = gameMode_2DToIso(app, x0, y1)
     botX, botY = gameMode_2DToIso(app, x1, y0)  
     rightX,rightY = gameMode_2DToIso(app, x1, y1)
-    yOffset = app.board[row][col] * app.heightFac
-    #i can change "height" of hills by changing offset :thinking: 
 
-    canvas.create_polygon(topX, topY, rightX, rightY, 
-                            botX, botY, leftX, leftY, fill = color )
+    # canvas.create_polygon(topX, topY, rightX, rightY, 
+    #                         botX, botY, leftX, leftY, fill = color )
     # canvas.create_line(topX, topY, rightX, rightY, width = 2)
     # canvas.create_line(rightX, rightY, botX, botY, width = 2)
     # canvas.create_line(leftX, leftY, botX, botY, width = 2)
     # canvas.create_line(leftX, leftY, topX, topY, width = 2)
 
+    #each corner's y is different
 
-    #create a "box" lol... this might be too much computations going on
-    canvas.create_polygon(leftX, leftY, leftX, leftY - yOffset, 
-                        botX, botY - yOffset, botX, botY, fill = color )
-    canvas.create_polygon(botX, botY, botX, botY - yOffset, 
-                            rightX, rightY - yOffset, rightX, rightY, fill = color )
-    canvas.create_polygon(botX, botY, botX, botY - yOffset, 
-                            topX, topY - yOffset, topX, topY, fill = color )
-    canvas.create_line(topX, topY, topX, topY - yOffset, width = 2)
-    canvas.create_line(rightX, rightY, rightX, rightY - yOffset, width = 2)
-    canvas.create_line(leftX, leftY, leftX, leftY - yOffset, width = 2)
-    canvas.create_line(botX, botY, botX, botY - yOffset, width = 2)
-
-    # canvas.create_polygon(topX, topY, rightX, rightY, 
-    #                         botX, botY, leftX, leftY, fill = color )
-    # canvas.create_polygon(topX, topY, rightX, rightY, 
-    #                         botX, botY, leftX, leftY, fill = color )
 
     #get center of square in cartesian coordinates
     # x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, canvas, row, col)
@@ -247,22 +231,71 @@ def gameMode_drawCell(app, canvas, row, col, color):
     # cx, cy = gameMode_2DToIso(app, cx, cy)
     # cy -= app.board[row][col] #move cy up by height
     # canvas.create_oval(cx - 1, cy - 1, cx + 1, cy + 1, fill = "black")
+
+    #Draw height
     leftX, leftY = gameMode_2DToIso(app, x0, y0)
     topX, topY = gameMode_2DToIso(app, x0, y1)
     botX, botY = gameMode_2DToIso(app, x1, y0)  
     rightX, rightY = gameMode_2DToIso(app, x1, y1)
-    leftY -= yOffset
-    topY -= yOffset
-    botY -= yOffset
-    rightY -= yOffset
+    yOffsetTopL = app.board[row][col] * app.heightFac
+    if (row + 1 < app.rows):
+        yOffsetBotL = app.board[row + 1][col] * app.heightFac
+    else:
+        yOffsetBotL = yOffsetTopL
+    
+    if (col + 1 < app.cols):
+        yOffsetTopR = app.board[row][col + 1] * app.heightFac
+    else:
+        yOffsetTopR = yOffsetTopL
+    
+    if (row + 1 < app.rows and col + 1 < app.cols):
+        yOffsetBotR = app.board[row + 1][col + 1] * app.heightFac
+    else:
+        yOffsetBotR = yOffsetTopL
 
-    #draw "height"
+    canvas.create_polygon(leftX, leftY, leftX, leftY - yOffsetTopL, 
+                        botX, botY - yOffsetTopR, botX, botY, fill = color )
+    canvas.create_polygon(botX, botY, botX, botY - yOffsetTopR, 
+                            rightX, rightY - yOffsetTopL, rightX, rightY, fill = color )
+    canvas.create_polygon(botX, botY, botX, botY - yOffsetTopR, 
+                            topX, topY - yOffsetBotL, topX, topY, fill = color )
+    canvas.create_line(topX, topY, topX, topY - yOffsetBotL, width = 2)
+    canvas.create_line(rightX, rightY, rightX, rightY - yOffsetBotR, width = 2)
+    canvas.create_line(leftX, leftY, leftX, leftY - yOffsetTopL, width = 2)
+    canvas.create_line(botX, botY, botX, botY - yOffsetTopR, width = 2)
     canvas.create_polygon(topX, topY, rightX, rightY, 
                             botX, botY, leftX, leftY, fill = color )
+    canvas.create_polygon(topX, topY, rightX, rightY, 
+                            botX, botY, leftX, leftY, fill = color )
+    # leftY -= yOffsetTopL
+    # topY -= yOffsetTopL
+    # botY -= yOffsetTopL
+    # rightY -= yOffsetTopL
+    #this did noooot work
+    leftY -= yOffsetTopL
+    topY -= yOffsetBotL
+    botY -= yOffsetTopR
+    rightY -= yOffsetBotR
+    #draw "box" ????? 
+    # print(row, col, "TopL", leftX, leftY, "\n", "TopR",  topX, topY, "\n", "botL", botX, botY, "\n", "botR",  rightY)
+
+    #draw "height" (top plane of box)
+    canvas.create_polygon(topX, topY, rightX, rightY, 
+                            botX, botY, leftX, leftY, fill = color )
+
     canvas.create_line(topX, topY, rightX, rightY, width = 2)
     canvas.create_line(rightX, rightY, botX, botY, width = 2)
     canvas.create_line(leftX, leftY, botX, botY, width = 2)
     canvas.create_line(leftX, leftY, topX, topY, width = 2)
+    cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+    cx, cy = gameMode_2DToIso(app, cx, cy)
+    # canvas.create_text(cx, cy, text = f"{row}{col}")
+    # canvas.create_text(topX, topY, text = f"{topY}")
+    # canvas.create_text(leftX, leftY, text = f"{leftY}", fill = "white")
+    # canvas.create_text(rightX, rightY, text = f"{rightY}")
+    # canvas.create_text(botX, botY, text = f"{botY}")
+
+
 
 def gameMode_drawPlayer(app, canvas):
     row, col = app.playerPos
@@ -291,6 +324,8 @@ def gameMode_drawBoard(app, canvas):
     for row in range(rows):
         for col in range(cols):
             gameMode_drawCell(app, canvas, row, col, app.colorboard[row][col])
+            # if (row == 3):
+            #     gameMode_drawGrass(app, canvas, row, col)
 
 # def gameMode_drawObstacles(app, canvas):
 #     for obs in app.obsList:
@@ -309,8 +344,21 @@ def gameMode_drawHills(app, canvas):
     #diamond square algorithm
     pass
 
-def gameMode_drawGrass(app, canvas):
-    pass
+def gameMode_drawGrass(app, canvas, row, col):
+    #draw 5 grass things
+    x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, canvas, row, col)
+    cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+    cx, cy = gameMode_2DToIso(app, cx, cy)
+    for _ in range(0, 3):
+        cy -= app.board[row][col] * app.heightFac
+        canvas.create_arc(cx - 20, cy - 20, cx, cy, style = CHORD, 
+                            fill = "green", start = 110, width = 0)
+        canvas.create_arc(cx , cy , cx + 20, cy + 20, style = CHORD, 
+                        fill = "green", start = 120, width = 0)
+        canvas.create_arc(cx - 10, cy - 10, cx + 10, cy + 10, style = CHORD, 
+                            fill = "green", start = 150, width = 0)
+
+    
 
 def gameMode_drawTrees(app, canvas):
     pass

@@ -49,7 +49,7 @@ def redrawAll(app, canvas):
         y = 400 - y #flip it cuz coords suck
         #change r by whether its at beginning, middle, or end
         #ex if i = 0, then r gives a smaller value since math.sech(-5)
-        rdm = random.randint(1, 2)
+        rdm = 1.5
         r = (1/(math.cosh((i - 10)//rdm))) * 10
         if (r >= 0.5):
             canvas.create_oval(x - r, y - (rdm * r), x + (1.1 * r), y + r, fill = "white",

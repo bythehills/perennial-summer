@@ -3,21 +3,21 @@ import random
 
 #credits: me, hopefully
 def appStarted(app):
-    app.board = [[0] * 33 for row in range(33)] #rows, cols have to be size 2^n + 1
-    app.rows = 33
-    app.cols = 33
+    app.board = [[0] * 5 for row in range(5)] #rows, cols have to be size 2^n + 1
+    app.rows = 5
+    app.cols = 5
     app.cellSize = 40
     app.margin = 10
     #initialize corner values
     app.board[0][0] = 4
-    app.board[32][0] = 5
-    app.board[32][32] = 6
-    app.board[0][32] = 7
+    app.board[4][0] = 5
+    app.board[4][4] = 6
+    app.board[0][4] = 7
     app.prevX = 200
     app.prevY = 100
-    #now you have 32 squares, perform diamond step again (find midpoint of all 32 squares)
-    app.squareList = [(0, 0), (32, 0), (32, 32), (0, 32)]
-    diamondSquare(app, 16)
+    #now you have 4 squares, perform diamond step again (find midpoint of all 4 squares)
+    app.squareList = [(0, 0), (4, 0), (4, 4), (0, 4)]
+    diamondSquare(app, 2)
 
 def repr2dList(L):
     if (L == []): return '[]'
@@ -45,8 +45,9 @@ def repr2dList(L):
 def print2dList(L):
     print(repr2dList(L))
 
-def diamondSquare(app, step):
+def diamondSquare(app, step, depth = 0):
     if (step == 0):
+        print(print2dList(app.board))
         return
     else:
         rows, cols = len(app.board), len(app.board[0])
@@ -60,7 +61,7 @@ def diamondSquare(app, step):
             topRightRow, topRightCol = app.squareList[i + 3]
             average = (app.board[topLeftRow][topLeftCol] + app.board[bottomLeftRow][bottomLeftCol] + app.board[bottomRightRow][bottomRightCol] + app.board[topRightRow][topRightCol])//4
             #find average of four corners, add a random value to it
-            average += random.randint(0, 10) 
+            # average += random.randint(0, 10) 
             centerRow, centerCol = app.squareList[i][0] + step, app.squareList[i][1] + step
             app.board[centerRow][centerCol] = average
             #NOW do square step
@@ -68,7 +69,8 @@ def diamondSquare(app, step):
             center = (centerRow, centerCol)
             calculateDiamondValues(app, i, center, step) #fill "diamond" extending out from center with average of values near it
             addSquaresToList(app, i, center, step) #add squares to center list
-        diamondSquare(app, step//2)
+            print("  " * depth, print2dList(app.board))
+        diamondSquare(app, step//2, depth + 1)
 
 
 def calculateDiamondValues(app, i, center, step):
