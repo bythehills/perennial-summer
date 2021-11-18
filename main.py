@@ -9,16 +9,18 @@ import pygame
 #for tp3: yeah idk
 
 #Credits: a bunch of code from my hack112 project
-#Isometric code from: https://gamedevelopment.tutsplus.com/tutorials/creating-is
+#Isometric code from: https://gamedevelopment.tutsplus.com/tutorials/creating-ismj
 # ometric-worlds-a-primer-for-game-developers--gamedev-6511
 #Diamond square algorithm: https://web.archive.org/web/20060420054134/http://www
 # .gameprogrammer.com/fractal.html#diamond
 #Perlin noise
-#Voronoi / worley? for trees
 #Cool clouds definitely not achievable though http://killzone.dl.playstation.net
 # /killzone/horizonzerodawn/presentations/Siggraph15_Schneider_Real-Time_Volumet
 # ric_Cloudscapes_of_Horizon_Zero_Dawn.pdf
 #Repr2DList from : https://www.cs.cmu.edu/~112/notes/notes-2d-lists.html
+ 
+
+
 
 def repr2dList(L):
     if (L == []): return '[]'
@@ -65,7 +67,7 @@ def appStarted(app):
     app.board[0][app.rows - 1] = 7
     app.prevX = 200
     app.prevY = 100
-    app.heightFac = 3
+    app.heightFac = 5
     #now you have 32 squares, perform diamond step again (find midpoint of all 32 squares)
     app.squareList = [(0, 0), (app.rows - 1, 0), (app.rows - 1, app.rows - 1), (0, app.rows - 1)]
     diamondSquare(app, app.rows//2)
@@ -82,8 +84,18 @@ def appStarted(app):
     app.prevX = 300
     app.prevY = 150
     app.skyColor = ["#6197ed", "#81a5de", "#aac0e3", "white" ]
+    app.text = ""
+    app.displayJournal = False
+    app.journal = dict()
+    app.goHome = False
+    app.month = 6
+    app.day = 1
     gameMode_fillBoard(app)
 
+
+def restartApp(app):
+    appStarted(app)
+    
 def diamondSquare(app, step):
     if (step == 0):
         return
@@ -156,13 +168,8 @@ def gameMode_2DToIso(app, x, y):
     return newX, newY
 
 
-def gameMode_IsoTo2D(x, y):
-    newX = (x - y)/2 + 400
-    newY = (x + y)/4 + 200
-    return newX, newY
-
-def gameMode_timerFired(app):
-    row, col = app.playerPos
+def interpolate(app, x, y):
+    #i kind of want it to interpolate between diff colors/ emotions
     pass
 
 def gameMode_constraintsMet(app, row, col):
@@ -177,6 +184,27 @@ def gameMode_expandBoard(app, dir):
 
 def gameMode_keyPressed(app, event):
     cx, cy = app.playerPos
+    if (app.goHome):
+        if (event.key == "Y"):
+            app.goHome = False
+            restartApp(app)
+    if (len(event.key) == 1):
+        app.text += event.key
+        app.displayText = False #this is kinda bad but whatever
+    if (event.key == "Space"):
+        app.text += " "
+    if (app.text.lower() == "go home"):
+        app.goHome = True
+        app.text = ""
+        app.day += 1
+        if (app.day >= 30):
+            app.month += 1
+            app.day = 1
+    if (event.key == 'Enter'):
+        date = f"{app.month}/{app.day}"
+        app.journal[date] = app.journal.get(date, "") + app.text #not sure how to do this for several "days"
+        app.text = ""
+        app.displayJournal = not app.displayJournal #False -> True, True -> False
     if (event.key == 'Up'):
         if (gameMode_constraintsMet(app, cx - 1, cy - 1)):
             app.prevY += 40
@@ -308,6 +336,10 @@ def gameMode_drawPlayer(app, canvas):
     canvas.create_oval(x - 10, y - 10, x + 10, y + 10, fill = "white")
     #gameMode_drawCell(app, canvas, row, col, "white")
 
+def gameMode_drawHome(app, canvas):
+    canvas.create_rectangle(0, 0, app.height, app.width, fill = "black")
+    canvas.create_text(app.width/2, app.height/2, text = "you went home for the day and rested")
+    canvas.create_text(app.width/2, app.height/2 + 20, text = "go out again the next morning? (y/n)")
 
 #Fills board at beginning with colors, also called whenever new rows are added
 def gameMode_fillBoard(app):
@@ -339,6 +371,19 @@ def gameMode_drawBoard(app, canvas):
 def gameMode_drawClouds(app, canvas):
 
     pass
+
+def gameMode_drawJournal(app, canvas):
+    canvas.create_rectangle(200, 200, 600, 600, fill = "#f5eace")
+    canvas.create_text(220, 400, text = "daily journal", font = "Courier 24 bold")
+    i = 0
+    for key in app.journal:
+        tex = app.journal[key]
+        canvas.create_text(200 + i * 20, 400, text = tex)
+        i += 1
+
+def gameMode_drawTextBubble(app, canvas):
+    canvas.create_text(app.width//2, 700, text = f"{app.text}", fill = "white",
+                        font = "Courier 24 bold")
 
 def gameMode_drawHills(app, canvas):
     #diamond square algorithm
@@ -373,9 +418,13 @@ def gameMode_drawBackground(app, canvas):
 
 
 def gameMode_redrawAll(app, canvas):
-    gameMode_drawBackground(app, canvas)
-    gameMode_drawBoard(app, canvas)
-    gameMode_drawPlayer(app, canvas)
+    if (app.displayJournal):
+        gameMode_drawJournal(app, canvas)
+    else:
+        gameMode_drawBackground(app, canvas)
+        gameMode_drawBoard(app, canvas) 
+        gameMode_drawPlayer(app, canvas)
+        gameMode_drawTextBubble(app, canvas)
     # gameMode_drawObstacles(app, canvas)
 
 runApp(width = 800, height = 800)
