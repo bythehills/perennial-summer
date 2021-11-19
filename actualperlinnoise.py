@@ -1,30 +1,5 @@
-def repr2dList(L):
-    if (L == []): return '[]'
-    output = [ ]
-    rows = len(L)
-    cols = max([len(L[row]) for row in range(rows)])
-    M = [['']*cols for row in range(rows)]
-    for row in range(rows):
-        for col in range(len(L[row])):
-            M[row][col] = repr(L[row][col])
-    colWidths = [0] * cols
-    for col in range(cols):
-        colWidths[col] = max([len(M[row][col]) for row in range(rows)])
-    output.append('[\n')
-    for row in range(rows):
-        output.append(' [ ')
-        for col in range(cols):
-            if (col > 0):
-                output.append(', ' if col < len(L[row]) else '  ')
-            output.append(M[row][col].rjust(colWidths[col]))
-        output.append((' ],' if row < rows-1 else ' ]') + '\n')
-    output.append(']')
-    return ''.join(output)
-
-def print2dList(L):
-    print(repr2dList(L))
-
-#very bad and incorrect implementation of perlin noise:
+#Concept based off of https://web.archive.org/web/20170201233641/https://mzucker
+# .github.io/html/perlin-noise-math-faq.html
 
 from cmu_112_graphics import *
 import random
@@ -36,16 +11,21 @@ def appStarted(app):
     app.cellSize = 5 #idk why this can never be less than 5..
     app.margin = 0
     app.perlinBoardLength = 50
-    app.perlinBoard = [[0] * app.perlinBoardLength for row in range(app.perlinBoardLength)]
+    app.perlinBoard = [[0] * app.perlinBoardLength 
+                        for row in range(app.perlinBoardLength)]
     app.timerDelay = 1000
-    app.newPerlinBoard = [[0] * (app.perlinBoardLength* 2) for row in range(app.perlinBoardLength * 2)]
+    app.newPerlinBoard = [[0] * (app.perlinBoardLength* 2) 
+                            for row in range(app.perlinBoardLength * 2)]
     app.newPerlinLength = app.perlinBoardLength * 2
-    app.oct3PerlinBoard = [[0] * (app.perlinBoardLength//2) for row in range(app.perlinBoardLength//2)]
+    app.oct3PerlinBoard = [[0] * (app.perlinBoardLength//2) 
+                            for row in range(app.perlinBoardLength//2)]
     app.oct3PerlinLength = app.perlinBoardLength//2
-    app.oct4PerlinBoard = [[0] * (app.perlinBoardLength//5) for row in range(app.perlinBoardLength//5)]
+    app.oct4PerlinBoard = [[0] * (app.perlinBoardLength//5) 
+                            for row in range(app.perlinBoardLength//5)]
     app.oct4PerlinLength = app.perlinBoardLength//5
 
-    calcGradVec(app)
+    calcGradVec(app, app.board)
+
     fillPerlinBoard(app)
     perlinOctave2(app)
     perlinOctave3(app)
@@ -56,19 +36,23 @@ def timerFired(app):
     pass
 
 #generates vector (dx, dy) of length 1
-def calcGradVec(app):
-    for row in range(app.rows):
-        for col in range(app.cols):
-            dx = random.randrange(-100, 100)
+def calcGradVec(app, board):
+    for row in range(len(board)):
+        for col in range(len(board[0])):
+            dx = random.randrange(0, 100)
             dx = float(dx/100)
             a2 = dx**2
             b2 = (1 - a2) ** 0.5
             dy = b2
-            chance = random.randint(0, 1)
+            chance = random.randint(0, 3)
             if (chance == 1):
-                app.board[row][col] = (dx, dy)
+                board[row][col] = (dx, dy)
+            elif (chance == 2):
+                board[row][col] = (-dx, dy)
+            elif (chance == 3):
+                board[row][col] = (-dx, -dy)
             else:
-                app.board[row][col] = (dy, dx)
+                board[row][col] = (dx, -dy )
 
 def calcDotProduct(corner, cur):
     a, b = corner
@@ -121,6 +105,7 @@ def perlin(app, x, y):
         cornerVectorBR = cornerVectorTL
         distanceBR = distanceTL
 
+    #Testing code
     # distanceTL= normalize(distanceTL)
     # distanceTR= normalize(distanceTR)
     # distanceBL= normalize(distanceBR)
@@ -143,13 +128,14 @@ def perlin(app, x, y):
     a = interpolate(vecTL, vecTR, Sx)
     b = interpolate(vecBL, vecBR, Sx)
     # print(a, b)
-    y1 = (row + 1)
+    y1 = row
     Sy = 3*(y - y1)**2 - 2*(y - y1)**3
     
     final = interpolate(a, b, Sy)
+
     #code to keep final result between (0 ,1) from:
     #http://adrianb.io/2014/08/09/perlinnoise.html
-    return (final + 0.5)/1.5
+    return (final + 0.3)
 
 
 def getCellBoundsinCartesianCoords(app, canvas, row, col):
@@ -177,8 +163,6 @@ def fillPerlinBoard(app):
             app.perlinBoard[pX][pY] = val
 
 def perlinOctave2(app):
-    #"Scale" it to half the size?
-    #uhh so I should create another perlin board but half the size
     for pX in range(0, app.newPerlinLength):
         for pY in range(0, app.newPerlinLength):
             val = perlin(app, pX, pY)
@@ -217,42 +201,48 @@ def movePerlin(app):
             tempBoard[pX][pY] = app.perlinBoard[newX][newY]
     app.perlinBoard = tempBoard
 
-print(rgb_color((200, 100, 25)))
 def redrawAll(app, canvas):
-    #Create another Perlin curve (or reuse the same one), but double the resolution
-    #Then halve the output value, and add it on top of the first curve
-    # for pX in range(0, app.perlinBoardLength):
-    #     for pY in range(0, app.perlinBoardLength):
-    #         val = app.perlinBoard[pX][pY]
-    #         # print(val)
-    #         val = int(abs(val) * 255) % 255
-    #         #do some multiply blending here or smthn?
-    #         color = rgb_color((val, val, val))
-    #         offset = app.width // app.perlinBoardLength
-    #         canvas.create_rectangle(pX * offset - offset, pY * offset - offset, pX * offset + offset, pY * offset + offset, fill = color)
     for pX in range(0, app.newPerlinLength):
         for pY in range(0, app.newPerlinLength):
             val = app.newPerlinBoard[pX][pY]
             val2 = app.perlinBoard[pX//2][pY//2]
             val3 = app.oct3PerlinBoard[pX//4][pY//4]
             val4 = app.oct4PerlinBoard[pX//10][pY//10]
-            # val = val4 + (val * 0.1) + (val2 * 0.2) + (val3 * 0.4)
+            val = (val * 0.5) + (val2 * 0.5) + val3
             # val = (val + 1)/2
             # val = val/1.7
-            # print(val)
-            val = int(abs(val) * 255) % 255
-            val2 = int(abs(val2) * 255) % 255
-            val3 = int(abs(val3) * 255) % 255
-            val4 = int(abs(val4) * 255) % 255
-            val = val4 + val * 0.1
+            # print(val4)
+            # val2 = int(abs(val2) * 255) % 255
+            # val3 = int(abs(val3) * 255) % 255
+            # val4 = int(abs(val4) * 255) % 255
+            val = int((val) * 255)
+            if (val >= 255):
+                val = 255
+            elif (val <= 0):
+                val = 0
+            
+            #if val4 is alr black, then it's not going to change v much...
             # print(val, val2, val3, val4)
             # if (val > 255):
             #     val = 255
-            val = int(val)
-            #do some multiply blending here or smthn?
-            color = rgb_color((val, val, val))
+            color = 0
+            if (val >= 200):
+                color = "#ffffff"
+            elif (val >= 180):
+                color = "#e8f1fc"
+            elif (val >= 150):
+                color = "#deecfc"
+            elif (val >= 120):
+                color = "#dae8f0"
+            elif (val >= 80):
+                color = "#7ab7f0"
+            else:
+                color = "#7ab7f0"
+            # color = rgb_color((val, val, val))
             offset = app.width // app.newPerlinLength
-            canvas.create_rectangle(pX * offset - offset, pY * offset - offset, pX * offset + offset, pY * offset + offset, fill = color, width = 0)
+            canvas.create_rectangle(pX * offset - offset, pY * offset - offset, 
+                                    pX * offset + offset, pY * offset + offset, 
+                                    fill = color, width = 0)
 
 
 runApp(width = 500, height = 500)
