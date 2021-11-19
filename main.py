@@ -13,39 +13,12 @@ import random
 #Repr2DList from : https://www.cs.cmu.edu/~112/notes/notes-2d-lists.html
  
 
-def repr2dList(L):
-    if (L == []): return '[]'
-    output = [ ]
-    rows = len(L)
-    cols = max([len(L[row]) for row in range(rows)])
-    M = [['']*cols for row in range(rows)]
-    for row in range(rows):
-        for col in range(len(L[row])):
-            M[row][col] = repr(L[row][col])
-    colWidths = [0] * cols
-    for col in range(cols):
-        colWidths[col] = max([len(M[row][col]) for row in range(rows)])
-    output.append('[\n')
-    for row in range(rows):
-        output.append(' [ ')
-        for col in range(cols):
-            if (col > 0):
-                output.append(', ' if col < len(L[row]) else '  ')
-            output.append(M[row][col].rjust(colWidths[col]))
-        output.append((' ],' if row < rows-1 else ' ]') + '\n')
-    output.append(']')
-    return ''.join(output)
-
-def print2dList(L):
-    print(repr2dList(L))
-
 #Initialize vars
 def appStarted(app):
     app.text = ""
     app.displayJournal = False
     app.goHome = False
     restartApp(app)
-
 
 
 #"Restarts" app, including player pos, but keeps journal
@@ -86,6 +59,7 @@ def restartApp(app):
     app.prevX = 300
     app.prevY = 150
     app.skyColor = ["#6197ed", "#81a5de", "#aac0e3", "white" ]
+    app.timerDelay = 1000
 
     #Vars related to journal
     #BRUH HOW TF DOES RESTARTAPP WORK
@@ -97,22 +71,25 @@ def restartApp(app):
     app.perlinRows = 50
     app.perlinCols = app.perlinRows
     app.gradBoard = [[(0, 0)] * app.perlinRows for row in range(app.perlinRows)]
-    app.perlinCellSize = 5 #idk why this can never be less than 5..
+    app.perlinCellSize = 5 
     app.perlinBoardLength = 50
     app.perlinBoard = [[0] * app.perlinBoardLength 
                         for row in range(app.perlinBoardLength)]
     app.newPerlinBoard = [[0] * (app.perlinBoardLength* 2) 
                             for row in range(app.perlinBoardLength * 2)]
     app.newPerlinLength = app.perlinBoardLength * 2
+    #stores color of perlin board 
+    app.perlinColor = copy.deepcopy(app.newPerlinBoard)
     app.oct3PerlinBoard = [[0] * (app.perlinBoardLength//2) 
                             for row in range(app.perlinBoardLength//2)]
     app.oct3PerlinLength = app.perlinBoardLength//2
 
-    calcGradVec(app, app.perlinBoard)
+    calcGradVec(app, app.gradBoard)
 
     fillPerlinBoard(app)
     perlinOctave2(app)
     perlinOctave3(app)
+    fillPerlin(app)
 
     gameMode_fillBoard(app)
 
@@ -155,6 +132,7 @@ def perlin(app, x, y):
     #Turn (x, y) into decimal points
     x = float(x/app.perlinCellSize)
     y = float(y/app.perlinCellSize)
+
     distanceTL = (x - col, y - row)
     #Calculate corner gradient vectors and distance from (x, y)
     if (col + 1 < app.perlinCols):
@@ -187,7 +165,6 @@ def perlin(app, x, y):
     vecTR = calcDotProduct(cornerVectorTR, distanceTR)
     vecBL = calcDotProduct(cornerVectorBL, distanceBL)
     vecBR = calcDotProduct(cornerVectorBR, distanceBR)
-
     #average TL and TR
     x1 = col
     Sx = 3 * (x - x1)**2 -  2 * (x - x1)**3
@@ -195,9 +172,7 @@ def perlin(app, x, y):
     b = interpolate(vecBL, vecBR, Sx)
     y1 = row
     Sy = 3*(y - y1)**2 - 2*(y - y1)**3
-    
     final = interpolate(a, b, Sy)
-
     #code to keep final result between (0 ,1) from:
     #http://adrianb.io/2014/08/09/perlinnoise.html
     return (final + 0.3)
@@ -319,8 +294,6 @@ def gameMode_2DToIso(app, x, y):
     return newX, newY
 
 #Interpolate between colors (to be implemented)
-def interpolate(app, x, y):
-    pass
 
 #Checks for player movement
 def gameMode_constraintsMet(app, r, c):
@@ -383,6 +356,31 @@ def getCellBoundsinCartesianCoords(app, row, col):
     y0 = row * app.cellSize + app.margin
     y1 = (row + 1) * app.cellSize + app.margin
     return x0, y0, x1, y1
+
+def moveClouds(app):
+    #Moves clouds dx + 1, dy - 1 per 1 sec, loops them
+    tempBoard = copy.deepcopy(app.perlinColor)
+    length = len(app.newPerlinBoard)
+    for pX in range(1, length):
+        for pY in range(0, length - 1):
+            newColor = app.perlinColor[pX - 1][pY + 1]
+            tempBoard[pX][pY] = newColor
+    app.perlinColor = tempBoard
+
+def gameMode_timerFired(app):
+    moveClouds(app)
+
+
+
+#---------------------------------------
+# JOURNAL FUNCTIONS
+# --------------------------------------
+def detectWords(app):
+    pass
+
+#---------------------------------------
+# DRAW FUNCTIONS
+# --------------------------------------
 
 #Draws terrain according to height
 def gameMode_drawCell(app, canvas, row, col, color):
@@ -458,22 +456,19 @@ def gameMode_drawCell(app, canvas, row, col, color):
     cx, cy = gameMode_2DToIso(app, cx, cy)
 
 
-def gameMode_drawPerlin(app, canvas):
+def fillPerlin(app):
     for pX in range(0, app.newPerlinLength):
         for pY in range(0, app.newPerlinLength):
             val = app.newPerlinBoard[pX][pY]
             val2 = app.perlinBoard[pX//2][pY//2]
             val3 = app.oct3PerlinBoard[pX//4][pY//4]
-            val4 = app.oct4PerlinBoard[pX//10][pY//10]
             val = (val * 0.5) + (val2 * 0.5) + val3
             val = int((val) * 255)
-
             #Clamp it between black and white
             if (val >= 255):
                 val = 255
             elif (val <= 0):
                 val = 0
-            
             color = 0
             if (val >= 200):
                 color = "#ffffff"
@@ -487,9 +482,17 @@ def gameMode_drawPerlin(app, canvas):
                 color = "#7ab7f0"
             else:
                 color = "#7ab7f0"
+            app.perlinColor[pX][pY] = color
             # color = rgb_color((val, val, val))
+
+def gameMode_drawClouds(app, canvas):
+    #Goes from 0 to 100
+    for pX in range(0, app.newPerlinLength):
+        for pY in range(0, app.newPerlinLength):
             offset = app.width // app.newPerlinLength
-            canvas.create_rectangle(pX * offset - offset, pY * offset - offset, 
+            color = app.perlinColor[pX][pY]
+            if (color != "#7ab7f0" and color != "#deecfc" and color != "#dae8f0"):
+                    canvas.create_rectangle(pX * offset - offset, pY * offset - offset, 
                                     pX * offset + offset, pY * offset + offset, 
                                     fill = color, width = 0)
 
@@ -594,8 +597,8 @@ def gameMode_redrawAll(app, canvas):
         gameMode_drawBackground(app, canvas)
         gameMode_drawBoard(app, canvas) 
         gameMode_drawPlayer(app, canvas)
+        gameMode_drawClouds(app, canvas)
         gameMode_drawTextBubble(app, canvas)
-        gameMode_drawPerlin(app, canvas)
     # gameMode_drawObstacles(app, canvas)
 
 runApp(width = 800, height = 800)
