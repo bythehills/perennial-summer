@@ -11,7 +11,9 @@ import random
 #Perlin noise from https://web.archive.org/web/20170201233641/https://mzucker.gi
 # thub.io/html/perlin-noise-math-faq.html
 #Repr2DList from : https://www.cs.cmu.edu/~112/notes/notes-2d-lists.html
- 
+#Caching photoimages from : https://www.cs.cmu.edu/~112/notes/notes-animations-part4.html
+#Code for opening / closing / writing / reading files from : https://www.guru99.com/reading-and-writing-files-in-python.html
+#AND https://stackoverflow.com/questions/28873349/python-readlines-not-returning-anything
 
 #Initialize vars
 def appStarted(app):
@@ -64,13 +66,15 @@ def appStarted(app):
 
     #JOURNAL VARS
     app.journal = open("journal.txt", "a+")
-    app.date = open("date.txt", "w+")
+    app.date = open("date.txt", "r")
     app.text = ""
     app.displayJournal = False
     app.goHome = False
-    app.month = 6
-    app.day = 1
-    app.journal.write(f"{app.month}/{app.day}")
+    date = app.date.read()
+    app.month, app.day = findDate(date)
+    app.date.close()
+    #app.date updates with new day, write that day down
+    app.journal.write(f"\n{app.month}/{app.day}\n") 
     url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/journalopen.png"
     app.journalOpenSprite = app.loadImage(url)
     url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/journalclose.png"
@@ -108,11 +112,15 @@ def appStarted(app):
     perlinOctave3(app)
     fillPerlin(app)
 
+    #todo: optimization for perlin noise: convert everything into an image
+    #and just have it scroll up
+
     gameMode_fillBoard(app, app.happyColor)
 
 
 #"Restarts" app, including player pos, but keeps journal
     # gameMode_fillTrees(app)
+
 
 #-----------------------------------------------------------
 # PERLIN FUNCTIONS
@@ -314,7 +322,11 @@ def gameMode_2DToIso(app, x, y):
     newY = (x + y)/4 - 300
     return newX, newY
 
-#Interpolate between colors (to be implemented)
+def getCachedPhotoImage(app, image):
+    # stores a cached version of the PhotoImage in the PIL/Pillow image
+    if ('cachedPhotoImage' not in image.__dict__):
+        image.cachedPhotoImage = ImageTk.PhotoImage(image)
+    return image.cachedPhotoImage
 
 #Checks for player movement
 def gameMode_constraintsMet(app, r, c):
@@ -328,10 +340,13 @@ def gameMode_mousePressed(app, event):
     if (app.displayJournal):
         if (100 <= event.x <= 200 and 200 <= event.y <= 300):
             app.displayJournal = False
+            #once done with reading journal, change into writing mode
+            app.journal = open("journal.txt", "a+")
     if (0 <= event.x <= 100 and 0 <= event.y <= 100):
         app.displayJournal = True 
         if (app. displayJournal):
             app.journal.close()
+            #change it into reading mode to display text
             app.journal = open("journal.txt", "r")
 
 def gameMode_keyPressed(app, event):
@@ -340,23 +355,30 @@ def gameMode_keyPressed(app, event):
     if (app.goHome):
         if (event.key == "y"):
             app.goHome = False
+            changeDate = open("date.txt", "w+")
+            if (app.month == 12):
+                app.month = 1
+            if (app.day == 30):
+                app.day = 1
+                app.month += 1
+            else:
+                app.day += 1
+            #update day for "next day"
+            changeDate.write(f"{app.month}/{app.day}")
+            changeDate.close()
+            app.text = ""
             appStarted(app)
     if (len(event.key) == 1):
         app.text += event.key
         app.displayJournal = False 
     if (event.key == "Space"):
         app.text += " "
+    if (event.key == "Backspace"):
+        app.text = app.text[:-1]
     if (app.text.lower() == "go home"):
         app.goHome = True
-        app.text = ""
-        app.day += 1
-        if (app.day >= 30):
-            app.month += 1
-            app.day = 1
     if (event.key == 'Enter'):
-        # date = f"{app.month}/{app.day}"
         app.journal.write(app.text + "\n")
-        # app.journal[date] = app.journal.get(date, "") + "\n" + app.text 
         app.text = ""
 
     #Player movement
@@ -381,6 +403,9 @@ def getCellBoundsinCartesianCoords(app, row, col):
     y1 = (row + 1) * app.cellSize + app.margin
     return x0, y0, x1, y1
 
+def findDate(date):
+    separator = date.find("/")
+    return int(date[:separator]), int(date[separator + 1:])
 
 #Currently broken but too lazy to fix
 def moveClouds(app):
@@ -440,6 +465,25 @@ def gameMode_fillBoard(app, colorBoard):
                 index = random.randint(0, len(colorBoard) - 1)
                 app.grassColorBoard[row][col] = colorBoard[index]
 
+#backtracking recursive function that makes words go onto the next line
+#this deals with singular lines not the entire journal
+def padWords(app, line):
+    if (len(line) == 0):
+        return 
+    else:
+        curLength = 0
+        newLine = []
+        while (curLength >= 30):
+            wordList = line.split(" ")
+            for i in range(len(wordList)):
+                word = wordList[i]
+                curLength += len(word)
+                newLine.append(word)
+                if (curLength >= 30):
+                    #im too lazy tro do this lmao
+                    return newLine + padWords(app, line)
+
+
 
 #---------------------------------------
 # DRAW FUNCTIONS
@@ -451,7 +495,7 @@ def gameMode_drawCell(app, canvas, row, col, color):
     y0 = row * app.cellSize + app.margin
     x1 = (col + 1) * app.cellSize + app.margin
     y1 = (row + 1) * app.cellSize + app.margin
-    if (0 <= x0 <= app.width or 0 <= y0 <= app.height):
+    if (0 <= x0 <= app.width * 2 or 0 <= y0 <= app.height * 2):
         #convert to isometric coords
         leftX, leftY = gameMode_2DToIso(app, x0, y0)
         topX, topY = gameMode_2DToIso(app, x0, y1)
@@ -519,7 +563,8 @@ def gameMode_drawCell(app, canvas, row, col, color):
         cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
         cx, cy = gameMode_2DToIso(app, cx, cy)
         if (color == app.happyColor[0]):
-            canvas.create_image(cx, cy - yOffsetTopL - 30, image=ImageTk.PhotoImage(app.treeSprite))
+            tree = getCachedPhotoImage(app, app.treeSprite)
+            canvas.create_image(cx, cy - yOffsetTopL - 30, image=tree)
 
 
 
@@ -572,7 +617,8 @@ def gameMode_drawPlayer(app, canvas):
     x, y = app.playerPos
     # x, y = gameMode_2DToIso(app, x, y)
     # y += app.cellSize//2
-    canvas.create_image(x, y, image=ImageTk.PhotoImage(app.playerSprite))
+    player = getCachedPhotoImage(app, app.playerSprite)
+    canvas.create_image(x, y, image = player)
 
 def gameMode_drawHome(app, canvas):
     canvas.create_rectangle(0, 0, app.height, app.width, fill = "black")
@@ -611,10 +657,18 @@ def gameMode_drawJournal(app, canvas):
     i = 0
     app.journal.seek(0)
     lines = app.journal.readlines()
-    # print(lines)
     for line in lines:
-        canvas.create_text (200, 250 + i * 20, text = line)
+        #recursive func that returns word so it isn't going too far on page
+        if (len(line) >= 30):
+            textArr = padWords(line)
+        canvas.create_text (200, 250 + i * 20, text = line, font = "Courier 15 bold")
+        if (i >= 15): 
+            i = 0
+            #put on next half of page
+            canvas.create_text (400, 250 + i * 20, text = line, font = "Courier 15 bold")
         i += 1
+
+    
     canvas.create_image(150, 250, image=ImageTk.PhotoImage(app.journalCloseSprite))
 
     # for key in app.journal:
@@ -625,15 +679,16 @@ def gameMode_drawJournal(app, canvas):
     #         i += 1
 
 def gameMode_drawTextAndUI(app, canvas):
-    canvas.create_image(50, 50, image=ImageTk.PhotoImage(app.journalOpenSprite))
+    canvas.create_image(75, 75, image=ImageTk.PhotoImage(app.journalOpenSprite))
     canvas.create_text(app.width//2, 700, text = f"{app.text}", fill = "white",
                         font = "Courier 24 bold", anchor = "s")
 
 
 def gameMode_drawGrass(app, canvas):
+    grassSprite = getCachedPhotoImage(app, app.grassSprite)
     for x in range(0, app.width, 200):
         for y in range(0, app.height, 200):
-            canvas.create_image(x, y, image=ImageTk.PhotoImage(app.grassSprite))
+            canvas.create_image(x, y, image = grassSprite)
 
     # x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
     # cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
