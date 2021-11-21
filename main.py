@@ -15,22 +15,14 @@ import random
 
 #Initialize vars
 def appStarted(app):
-    app.text = ""
-    app.displayJournal = False
-    app.goHome = False
-    restartApp(app)
-
-
-#"Restarts" app, including player pos, but keeps journal
-def restartApp(app):
     app.mode = "gameMode"
     #change this to any num x where x = 2^n + 1
     app.rows = 33
     app.cols = app.rows
     app.board = [[0] * app.rows for row in range(app.rows)] 
-    #colorboard stores colors, app.board stores height
-    app.colorboard = [[0] * app.rows for row in range(app.rows)]
-    app.cellSize = 100
+    #grassColorBoard stores colors, app.board stores height
+    app.grassColorBoard = [[0] * app.rows for row in range(app.rows)]
+    app.cellSize = 300
     app.margin = 0
 
     #Diamond square algorithm 
@@ -47,9 +39,17 @@ def restartApp(app):
     diamondSquare(app, app.rows//2)
 
     #Color, position
-    app.color = ["#649e44", "#2f5234", "#4d9129", "#1f6129", "#136b19"]
+    app.happyColor = ["#649e44", "#478f45", "#449642", "#298747"]
+    app.sadColor = ["#649e44", "#2f5234", "#4d9129", "#1f6129", "#136b19"]
+    app.neutralColor = ["#649e44", "#2f5234", "#4d9129", "#1f6129", "#136b19"]
+    app.madColor = ["#649e44", "#2f5234", "#4d9129", "#1f6129", "#136b19"]
+
     app.timerCount = 0
-    app.playerPos = (0, 0)
+    app.playerPos = (700, 100)
+    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/playerSprite.png"
+    app.playerSprite = app.loadImage(url)
+
+    app.speed = 40
     app.obsList = [] #list of class obstalces
     app.lives = 3
     app.score = 0
@@ -59,13 +59,30 @@ def restartApp(app):
     app.prevX = 300
     app.prevY = 150
     app.skyColor = ["#6197ed", "#81a5de", "#aac0e3", "white" ]
-    app.timerDelay = 1000
+    app.timerDelay = 100
+    app.timeSinceLastCloud = 0
 
-    #Vars related to journal
-    #BRUH HOW TF DOES RESTARTAPP WORK
-    app.journal = dict()
+    #JOURNAL VARS
+    app.journal = open("journal.txt", "a+")
+    app.date = open("date.txt", "w+")
+    app.text = ""
+    app.displayJournal = False
+    app.goHome = False
     app.month = 6
     app.day = 1
+    app.journal.write(f"{app.month}/{app.day}")
+    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/journalopen.png"
+    app.journalOpenSprite = app.loadImage(url)
+    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/journalclose.png"
+    app.journalCloseSprite = app.loadImage(url)
+
+
+    #Vars related to tree or nature stuff
+    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/tree.png"
+    app.treeSprite = app.loadImage(url)
+    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/grass.png"
+    app.grassSprite = app.loadImage(url)
+
 
     #vars related to perlin noise
     app.perlinRows = 50
@@ -91,7 +108,11 @@ def restartApp(app):
     perlinOctave3(app)
     fillPerlin(app)
 
-    gameMode_fillBoard(app)
+    gameMode_fillBoard(app, app.happyColor)
+
+
+#"Restarts" app, including player pos, but keeps journal
+    # gameMode_fillTrees(app)
 
 #-----------------------------------------------------------
 # PERLIN FUNCTIONS
@@ -289,8 +310,8 @@ def addSquaresToList(app, i, center, step):
 
 #Credits see top
 def gameMode_2DToIso(app, x, y):
-    newX = (x - y)/2 + app.prevX
-    newY = (x + y)/4 + app.prevY
+    newX = (x - y)/2 - 300
+    newY = (x + y)/4 - 300
     return newX, newY
 
 #Interpolate between colors (to be implemented)
@@ -303,6 +324,15 @@ def gameMode_constraintsMet(app, r, c):
 def gameMode_expandBoard(app, dir):
     row, col = app.playerPos
 
+def gameMode_mousePressed(app, event):
+    if (app.displayJournal):
+        if (100 <= event.x <= 200 and 200 <= event.y <= 300):
+            app.displayJournal = False
+    if (0 <= event.x <= 100 and 0 <= event.y <= 100):
+        app.displayJournal = True 
+        if (app. displayJournal):
+            app.journal.close()
+            app.journal = open("journal.txt", "r")
 
 def gameMode_keyPressed(app, event):
     cx, cy = app.playerPos
@@ -324,31 +354,25 @@ def gameMode_keyPressed(app, event):
             app.month += 1
             app.day = 1
     if (event.key == 'Enter'):
-        date = f"{app.month}/{app.day}"
-        app.journal[date] = app.journal.get(date, "") + "\n" + app.text 
+        # date = f"{app.month}/{app.day}"
+        app.journal.write(app.text + "\n")
+        # app.journal[date] = app.journal.get(date, "") + "\n" + app.text 
         app.text = ""
-        app.displayJournal = not app.displayJournal 
 
     #Player movement
     if (event.key == 'Up'):
-        if (gameMode_constraintsMet(app, cx - 1, cy - 1)):
-            app.prevY += 40
-            app.playerPos = (cx - 1, cy - 1)
+        # if (gameMode_constraintsMet(app, cx - app.speed, cy - app.speed)):
+        # app.prevY += 40
+        app.playerPos = (cx, cy - app.speed)
     elif (event.key == 'Down'):
-        if (gameMode_constraintsMet(app, cx + 1, cy + 1)):
-            app.prevY -= 40
-            app.playerPos = (cx + 1, cy + 1)
+        # if (gameMode_constraintsMet(app, cx + app.speed, cy + app.speed)):
+        # app.prevY -= 40
+        app.playerPos = (cx, cy + app.speed)
     elif (event.key == 'Right'):
-        if (gameMode_constraintsMet(app, cx - 1, cy)):
-            app.playerPos = (cx - 1, cy)
-            app.prevX -= 40
-            app.playerDir = "right"
-        gameMode_expandBoard(app, "right")
+        app.playerPos = (cx + app.speed, cy)
+        app.playerDir = "right"
     elif (event.key == 'Left'):
-        if (gameMode_constraintsMet(app, cx + 1, cy)):
-            app.prevX += 40
-            app.playerPos = (cx + 1, cy)
-        gameMode_expandBoard(app, "left")
+        app.playerPos = (cx - app.speed, cy)
 
 def getCellBoundsinCartesianCoords(app, row, col):
     x0 = col * app.cellSize + app.margin
@@ -357,18 +381,27 @@ def getCellBoundsinCartesianCoords(app, row, col):
     y1 = (row + 1) * app.cellSize + app.margin
     return x0, y0, x1, y1
 
+
+#Currently broken but too lazy to fix
 def moveClouds(app):
     #Moves clouds dx + 1, dy - 1 per 1 sec, loops them
     tempBoard = copy.deepcopy(app.perlinColor)
     length = len(app.newPerlinBoard)
-    for pX in range(1, length):
-        for pY in range(0, length - 1):
-            newColor = app.perlinColor[pX - 1][pY + 1]
+    for pX in range(0, length):
+        for pY in range(0, length):
+            if (pX == 0 or pY == length - 1):
+                newColor = app.perlinColor[0][0]
+            else:
+                newColor = app.perlinColor[pX - 1][pY + 1]
             tempBoard[pX][pY] = newColor
     app.perlinColor = tempBoard
 
 def gameMode_timerFired(app):
     moveClouds(app)
+    app.timeSinceLastCloud += 1
+    # if (app.timeSinceLastCloud >= 80):
+    #     fillPerlin(app)
+    #     app.timeSinceLastCloud = 0
 
 
 
@@ -376,7 +409,37 @@ def gameMode_timerFired(app):
 # JOURNAL FUNCTIONS
 # --------------------------------------
 def detectWords(app):
-    pass
+    #I should make lists for each of these words
+    happyCount = 0
+    sadCount = 0
+    neutralCount = 0
+    angryCount = 0
+    for date in app.journal:
+        #get entire text from entry
+        text = app.journal[date]
+        if ("happy" in text or "good" in text):
+            happyCount += 1
+        if ("sad" in text or "down" in text or "cry" in text):
+            sadCount += 1
+        if ("meh" in text or "thinking" in text or "lonely" in text or "know" in text):
+            neutralCount += 1
+        if ("mad" in text or "angry" in text):
+            angryCount += 1
+    changeColors(happyCount, sadCount, neutralCount, angryCount)
+
+def changeColors(app):
+    gameMode_fillBoard(app, app.sadColor)
+
+#Fills board at beginning with colors, also called whenever new rows are added
+def gameMode_fillBoard(app, colorBoard):
+    #colorBoard is a list of colors corresponding to emotion
+    rows, cols = len(app.grassColorBoard), len(app.grassColorBoard[0])
+    for row in range(rows):
+        for col in range(cols):
+            if app.grassColorBoard[row][col] == 0:
+                index = random.randint(0, len(colorBoard) - 1)
+                app.grassColorBoard[row][col] = colorBoard[index]
+
 
 #---------------------------------------
 # DRAW FUNCTIONS
@@ -388,72 +451,76 @@ def gameMode_drawCell(app, canvas, row, col, color):
     y0 = row * app.cellSize + app.margin
     x1 = (col + 1) * app.cellSize + app.margin
     y1 = (row + 1) * app.cellSize + app.margin
-    #convert to isometric coords
-    leftX, leftY = gameMode_2DToIso(app, x0, y0)
-    topX, topY = gameMode_2DToIso(app, x0, y1)
-    botX, botY = gameMode_2DToIso(app, x1, y0)  
-    rightX,rightY = gameMode_2DToIso(app, x1, y1)
+    if (0 <= x0 <= app.width or 0 <= y0 <= app.height):
+        #convert to isometric coords
+        leftX, leftY = gameMode_2DToIso(app, x0, y0)
+        topX, topY = gameMode_2DToIso(app, x0, y1)
+        botX, botY = gameMode_2DToIso(app, x1, y0)  
+        rightX,rightY = gameMode_2DToIso(app, x1, y1)
 
-    #This draws "base", kept for testing purpsoes
-    # canvas.create_polygon(topX, topY, rightX, rightY, 
-    #                         botX, botY, leftX, leftY, fill = color )
-    # canvas.create_line(topX, topY, rightX, rightY, width = 2)
-    # canvas.create_line(rightX, rightY, botX, botY, width = 2)
-    # canvas.create_line(leftX, leftY, botX, botY, width = 2)
-    # canvas.create_line(leftX, leftY, topX, topY, width = 2)
+        #This draws "base", kept for testing purpsoes
+        # canvas.create_polygon(topX, topY, rightX, rightY, 
+        #                         botX, botY, leftX, leftY, fill = color )
+        # canvas.create_line(topX, topY, rightX, rightY, width = 2)
+        # canvas.create_line(rightX, rightY, botX, botY, width = 2)
+        # canvas.create_line(leftX, leftY, botX, botY, width = 2)
+        # canvas.create_line(leftX, leftY, topX, topY, width = 2)
 
-    #Draw height
-    leftX, leftY = gameMode_2DToIso(app, x0, y0)
-    topX, topY = gameMode_2DToIso(app, x0, y1)
-    botX, botY = gameMode_2DToIso(app, x1, y0)  
-    rightX, rightY = gameMode_2DToIso(app, x1, y1)
-    yOffsetTopL = app.board[row][col] * app.heightFac
-    if (row + 1 < app.rows):
-        yOffsetBotL = app.board[row + 1][col] * app.heightFac
-    else:
-        yOffsetBotL = yOffsetTopL
-    
-    if (col + 1 < app.cols):
-        yOffsetTopR = app.board[row][col + 1] * app.heightFac
-    else:
-        yOffsetTopR = yOffsetTopL
-    
-    if (row + 1 < app.rows and col + 1 < app.cols):
-        yOffsetBotR = app.board[row + 1][col + 1] * app.heightFac
-    else:
-        yOffsetBotR = yOffsetTopL
+        #Draw height
+        leftX, leftY = gameMode_2DToIso(app, x0, y0)
+        topX, topY = gameMode_2DToIso(app, x0, y1)
+        botX, botY = gameMode_2DToIso(app, x1, y0)  
+        rightX, rightY = gameMode_2DToIso(app, x1, y1)
+        yOffsetTopL = app.board[row][col] * app.heightFac
+        if (row + 1 < app.rows):
+            yOffsetBotL = app.board[row + 1][col] * app.heightFac
+        else:
+            yOffsetBotL = yOffsetTopL
+        
+        if (col + 1 < app.cols):
+            yOffsetTopR = app.board[row][col + 1] * app.heightFac
+        else:
+            yOffsetTopR = yOffsetTopL
+        
+        if (row + 1 < app.rows and col + 1 < app.cols):
+            yOffsetBotR = app.board[row + 1][col + 1] * app.heightFac
+        else:
+            yOffsetBotR = yOffsetTopL
 
-    #Draws sides
-    canvas.create_polygon(leftX, leftY, leftX, leftY - yOffsetTopL, 
-                        botX, botY - yOffsetTopR, botX, botY, fill = color )
-    canvas.create_polygon(botX, botY, botX, botY - yOffsetTopR, 
-                            rightX, rightY - yOffsetTopL, rightX, rightY, 
-                            fill = color )
-    canvas.create_polygon(botX, botY, botX, botY - yOffsetTopR, 
-                            topX, topY - yOffsetBotL, topX, topY, fill = color )
-    canvas.create_line(topX, topY, topX, topY - yOffsetBotL, width = 2)
-    canvas.create_line(rightX, rightY, rightX, rightY - yOffsetBotR, width = 2)
-    canvas.create_line(leftX, leftY, leftX, leftY - yOffsetTopL, width = 2)
-    canvas.create_line(botX, botY, botX, botY - yOffsetTopR, width = 2)
-    canvas.create_polygon(topX, topY, rightX, rightY, 
-                            botX, botY, leftX, leftY, fill = color )
-    canvas.create_polygon(topX, topY, rightX, rightY, 
-                            botX, botY, leftX, leftY, fill = color )
-    leftY -= yOffsetTopL
-    topY -= yOffsetBotL
-    botY -= yOffsetTopR
-    rightY -= yOffsetBotR
+        #Draws sides
+        canvas.create_polygon(leftX, leftY, leftX, leftY - yOffsetTopL, 
+                            botX, botY - yOffsetTopR, botX, botY, fill = color )
+        canvas.create_polygon(botX, botY, botX, botY - yOffsetTopR, 
+                                rightX, rightY - yOffsetTopL, rightX, rightY, 
+                                fill = color )
+        canvas.create_polygon(botX, botY, botX, botY - yOffsetTopR, 
+                                topX, topY - yOffsetBotL, topX, topY, fill = color )
+        # canvas.create_line(topX, topY, topX, topY - yOffsetBotL, width = 2)
+        # canvas.create_line(rightX, rightY, rightX, rightY - yOffsetBotR, width = 2)
+        # canvas.create_line(leftX, leftY, leftX, leftY - yOffsetTopL, width = 2)
+        # canvas.create_line(botX, botY, botX, botY - yOffsetTopR, width = 2)
+        canvas.create_polygon(topX, topY, rightX, rightY, 
+                                botX, botY, leftX, leftY, fill = color )
+        canvas.create_polygon(topX, topY, rightX, rightY, 
+                                botX, botY, leftX, leftY, fill = color )
+        leftY -= yOffsetTopL
+        topY -= yOffsetBotL
+        botY -= yOffsetTopR
+        rightY -= yOffsetBotR
 
-    #Draws "height" (top plane of box)
-    canvas.create_polygon(topX, topY, rightX, rightY, 
-                            botX, botY, leftX, leftY, fill = color )
+        #Draws "height" (top plane of box)
+        canvas.create_polygon(topX, topY, rightX, rightY, 
+                                botX, botY, leftX, leftY, fill = color )
 
-    canvas.create_line(topX, topY, rightX, rightY, width = 2)
-    canvas.create_line(rightX, rightY, botX, botY, width = 2)
-    canvas.create_line(leftX, leftY, botX, botY, width = 2)
-    canvas.create_line(leftX, leftY, topX, topY, width = 2)
-    cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
-    cx, cy = gameMode_2DToIso(app, cx, cy)
+        # canvas.create_line(topX, topY, rightX, rightY, width = 2)
+        # canvas.create_line(rightX, rightY, botX, botY, width = 2)
+        # canvas.create_line(leftX, leftY, botX, botY, width = 2)
+        # canvas.create_line(leftX, leftY, topX, topY, width = 2)
+        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+        cx, cy = gameMode_2DToIso(app, cx, cy)
+        if (color == app.happyColor[0]):
+            canvas.create_image(cx, cy - yOffsetTopL - 30, image=ImageTk.PhotoImage(app.treeSprite))
+
 
 
 def fillPerlin(app):
@@ -498,13 +565,14 @@ def gameMode_drawClouds(app, canvas):
 
 
 def gameMode_drawPlayer(app, canvas):
-    row, col = app.playerPos
-    x = col * app.cellSize
-    y = row * app.cellSize
-    yOffset = app.board[row][col] * app.heightFac
-    x, y = gameMode_2DToIso(app, x, y)
-    y += app.cellSize//2
-    canvas.create_oval(x - 10, y - 10, x + 10, y + 10, fill = "white")
+    # row, col = app.playerPos
+    # x = col * app.cellSize
+    # y = row * app.cellSize
+    # yOffset = app.board[row][col] * app.heightFac
+    x, y = app.playerPos
+    # x, y = gameMode_2DToIso(app, x, y)
+    # y += app.cellSize//2
+    canvas.create_image(x, y, image=ImageTk.PhotoImage(app.playerSprite))
 
 def gameMode_drawHome(app, canvas):
     canvas.create_rectangle(0, 0, app.height, app.width, fill = "black")
@@ -515,21 +583,13 @@ def gameMode_drawHome(app, canvas):
                         text = "go out again the next morning? (y/n)",
                         fill = "white")
 
-#Fills board at beginning with colors, also called whenever new rows are added
-def gameMode_fillBoard(app):
-    rows, cols = len(app.colorboard), len(app.colorboard[0])
-    for row in range(rows):
-        for col in range(cols):
-            if app.colorboard[row][col] == 0:
-                index = random.randint(0, len(app.color) - 1)
-                app.colorboard[row][col] = app.color[index]
             
 
 def gameMode_drawBoard(app, canvas):
     rows, cols = len(app.board), len(app.board[0])
     for row in range(rows):
         for col in range(cols):
-            gameMode_drawCell(app, canvas, row, col, app.colorboard[row][col])
+            gameMode_drawCell(app, canvas, row, col, app.grassColorBoard[row][col])
             # if (row == 3):
             #     gameMode_drawGrass(app, canvas, row, col)
 
@@ -549,42 +609,51 @@ def gameMode_drawJournal(app, canvas):
     canvas.create_text(400, 220, text = "journal", 
                         font = "Courier 24 bold", anchor = "s")
     i = 0
-    for key in app.journal:
-        canvas.create_text (200, 250 + i * 20, text = key)
-        tex = app.journal[key]
-        for entry in tex.splitlines():
-            canvas.create_text(200, 250 + i * 20, text = entry)
-            i += 1
+    app.journal.seek(0)
+    lines = app.journal.readlines()
+    # print(lines)
+    for line in lines:
+        canvas.create_text (200, 250 + i * 20, text = line)
+        i += 1
+    canvas.create_image(150, 250, image=ImageTk.PhotoImage(app.journalCloseSprite))
 
-def gameMode_drawTextBubble(app, canvas):
+    # for key in app.journal:
+    #     canvas.create_text (200, 250 + i * 20, text = key)
+    #     tex = app.journal[key]
+    #     for entry in tex.splitlines():
+    #         canvas.create_text(200, 250 + i * 20, text = entry)
+    #         i += 1
+
+def gameMode_drawTextAndUI(app, canvas):
+    canvas.create_image(50, 50, image=ImageTk.PhotoImage(app.journalOpenSprite))
     canvas.create_text(app.width//2, 700, text = f"{app.text}", fill = "white",
                         font = "Courier 24 bold", anchor = "s")
 
 
-def gameMode_drawGrass(app, canvas, row, col):
-    x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
-    cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
-    cx, cy = gameMode_2DToIso(app, cx, cy)
-    for _ in range(0, 3):
-        cy -= app.board[row][col] * app.heightFac
-        canvas.create_arc(cx - 20, cy - 20, cx, cy, style = CHORD, 
-                            fill = "green", start = 110, width = 0)
-        canvas.create_arc(cx , cy , cx + 20, cy + 20, style = CHORD, 
-                        fill = "green", start = 120, width = 0)
-        canvas.create_arc(cx - 10, cy - 10, cx + 10, cy + 10, style = CHORD, 
-                            fill = "green", start = 150, width = 0)
+def gameMode_drawGrass(app, canvas):
+    for x in range(0, app.width, 200):
+        for y in range(0, app.height, 200):
+            canvas.create_image(x, y, image=ImageTk.PhotoImage(app.grassSprite))
+
+    # x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
+    # cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+    # cx, cy = gameMode_2DToIso(app, cx, cy)
+    # for _ in range(0, 3):
+    #     cy -= app.board[row][col] * app.heightFac
+    #     canvas.create_arc(cx - 20, cy - 20, cx, cy, style = CHORD, 
+    #                         fill = "green", start = 110, width = 0)
+    #     canvas.create_arc(cx , cy , cx + 20, cy + 20, style = CHORD, 
+    #                     fill = "green", start = 120, width = 0)
+    #     canvas.create_arc(cx - 10, cy - 10, cx + 10, cy + 10, style = CHORD, 
+    #                         fill = "green", start = 150, width = 0)
 
     
-#To be implemented w/ perlin
+#To be implemented 
 def gameMode_drawTrees(app, canvas):
     pass
 
 def gameMode_drawBackground(app, canvas):
-    canvas.create_rectangle(0, 0, app.width, app.height, fill = "#94c4f7")
-    increment = app.height/4
-    for i in range(4):
-        y = i * increment
-        canvas.create_rectangle(0, y - increment, 0, y, fill = app.skyColor[i])
+    canvas.create_rectangle(0, 0, app.width, app.height, fill = "#71bff0")
 
 
 
@@ -596,9 +665,11 @@ def gameMode_redrawAll(app, canvas):
     else:
         gameMode_drawBackground(app, canvas)
         gameMode_drawBoard(app, canvas) 
+        gameMode_drawTrees(app, canvas)
+        gameMode_drawGrass(app, canvas)
         gameMode_drawPlayer(app, canvas)
         gameMode_drawClouds(app, canvas)
-        gameMode_drawTextBubble(app, canvas)
+        gameMode_drawTextAndUI(app, canvas)
     # gameMode_drawObstacles(app, canvas)
 
 runApp(width = 800, height = 800)
