@@ -10,10 +10,12 @@ import random
 # .gameprogrammer.com/fractal.html#diamond
 #Perlin noise from https://web.archive.org/web/20170201233641/https://mzucker.gi
 # thub.io/html/perlin-noise-math-faq.html
-#Repr2DList from : https://www.cs.cmu.edu/~112/notes/notes-2d-lists.html
 #Caching photoimages from : https://www.cs.cmu.edu/~112/notes/notes-animations-part4.html
-#Code for opening / closing / writing / reading files from : https://www.guru99.com/reading-and-writing-files-in-python.html
+#Code for opening / closing / writing / reading files adapted from : https://www.guru99.com/reading-and-writing-files-in-python.html
 #AND https://stackoverflow.com/questions/28873349/python-readlines-not-returning-anything
+#Getpixel and Putpixel from slfkjsldkjf
+#Camera movement adapted from PIL/Pillow mini lecture
+
 
 #Initialize vars
 def appStarted(app):
@@ -24,6 +26,7 @@ def appStarted(app):
     app.board = [[0] * app.rows for row in range(app.rows)] 
     #grassColorBoard stores colors, app.board stores height
     app.grassColorBoard = [[0] * app.rows for row in range(app.rows)]
+    app.grassTreeBoard = copy.deepcopy(app.grassColorBoard)
     app.cellSize = 300
     app.margin = 0
 
@@ -35,20 +38,14 @@ def appStarted(app):
     app.board[0][app.rows - 1] = 7
     app.prevX = 200
     app.prevY = 100
-    app.heightFac = 5
     app.squareList = [(0, 0), (app.rows - 1, 0), 
                         (app.rows - 1, app.rows - 1), (0, app.rows - 1)]
     diamondSquare(app, app.rows//2)
 
-    #Color, position
-    app.happyColor = ["#649e44", "#478f45", "#449642", "#298747"]
-    app.sadColor = ["#649e44", "#2f5234", "#4d9129", "#1f6129", "#136b19"]
-    app.neutralColor = ["#649e44", "#2f5234", "#4d9129", "#1f6129", "#136b19"]
-    app.madColor = ["#649e44", "#2f5234", "#4d9129", "#1f6129", "#136b19"]
 
     app.timerCount = 0
     app.playerPos = (700, 100)
-    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/playerSprite.png"
+    url = "playerSprite.png"
     app.playerSprite = app.loadImage(url)
 
     app.speed = 40
@@ -60,34 +57,86 @@ def appStarted(app):
     app.playerDir = ""
     app.prevX = 300
     app.prevY = 150
-    app.skyColor = ["#6197ed", "#81a5de", "#aac0e3", "white" ]
+    app.skyColor = ["#6197ed"]
     app.timerDelay = 100
     app.timeSinceLastCloud = 0
 
     #JOURNAL VARS
     app.journal = open("journal.txt", "a+")
     app.date = open("date.txt", "r")
+    app.feeling = open("feeling.txt", "r")
+    #stores journal lines
+    app.lines = []
+    app.feelingsDict = dict() #stores counts of different "moods"
     app.text = ""
+    app.textLenChecker = 0
     app.displayJournal = False
     app.goHome = False
     date = app.date.read()
     app.month, app.day = findDate(date)
     app.date.close()
+    #when it starts u have to start w/ /6/1 on DATE.TXT, not JOURNAL.TXT
     #app.date updates with new day, write that day down
     app.journal.write(f"\n{app.month}/{app.day}\n") 
-    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/journalopen.png"
+    url = "journalopen.png"
     app.journalOpenSprite = app.loadImage(url)
-    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/journalclose.png"
+    url = "journalclose.png"
     app.journalCloseSprite = app.loadImage(url)
-
+    app.vibe = app.feeling.read() #reads 'happy", "sad", "neutral", or "angry"
 
     #Vars related to tree or nature stuff
-    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/tree.png"
+    url = "tree.png"
     app.treeSprite = app.loadImage(url)
-    url = "C:/Users/Sarah Wang/Desktop/school/112/termproject/grass.png"
+    app.treeSprite = app.scaleImage(app.treeSprite, 0.5)
+    url = "grass.png"
     app.grassSprite = app.loadImage(url)
+    url = "neutralgrass.png"
+    app.neutralGrassSprite = app.loadImage(url)
+    url = "madgrass.png"
+    app.madGrassSprite = app.loadImage(url)
+    url = "sadgrass.png"
+    app.sadGrassSprite = app.loadImage(url)
+
+    url = "neutralFilter.png"
+    app.neutralFilter = app.loadImage(url)
+    app.neutralFilter = app.scaleImage(app.neutralFilter, 4)
+    url = "sadFilter.png"
+    app.sadFilter = app.loadImage(url)
+    app.sadFilter = app.scaleImage(app.sadFilter, 4)
+    url = "happyFilter.png"
+    app.happyFilter = app.loadImage(url)
+    app.happyFilter = app.scaleImage(app.happyFilter, 4)
+    url = "madFilter.png"
+    app.madFilter = app.loadImage(url)
+    app.madFilter = app.scaleImage(app.madFilter, 4)
 
 
+
+    #Color variations (for grass) to be implemented : color variations for
+    #clouds, trees, skies
+    #add vars for tree and grass density?
+    app.happyColorDict = {'grass': ['#649e44', '#478f45', '#449642', '#298747'], 
+                        'filter': app.happyFilter, "heightFac": 7, 
+                        "grassSprite": app.grassSprite, 'density': 2}
+    app.sadColorDict = {'grass': ['#4e6b5f', '#4e6b50', '#3e5e46', '#3f705e'], 
+                        'filter': app.sadFilter, "heightFac": 1, 
+                        "grassSprite": app.sadGrassSprite,  'density': 5}
+    app.neutralColorDict = {'grass': ['#e0bb55', '#cf9c30', '#b3814d', '#d1893f'], 
+                        'filter': app.neutralFilter, "heightFac": 5,
+                        "grassSprite": app.neutralGrassSprite, 'density': 1}
+    app.madColorDict = {'grass': ['#b56635', '#b54835', '#ad6b5f', '#c26936'], 
+                        'filter': app.madFilter, "heightFac": 20,
+                        "grassSprite": app.madGrassSprite, 'density': 10}
+
+    if (app.vibe == "happy"):
+        app.vibe = app.happyColorDict
+    elif (app.vibe == "sad"):
+        app.vibe = app.sadColorDict
+    elif (app.vibe == "neutral"):
+        app.vibe = app.neutralColorDict
+    else:
+        app.vibe = app.madColorDict
+        
     #vars related to perlin noise
     app.perlinRows = 50
     app.perlinCols = app.perlinRows
@@ -106,7 +155,6 @@ def appStarted(app):
     app.oct3PerlinLength = app.perlinBoardLength//2
 
     calcGradVec(app, app.gradBoard)
-
     fillPerlinBoard(app)
     perlinOctave2(app)
     perlinOctave3(app)
@@ -114,12 +162,32 @@ def appStarted(app):
 
     #todo: optimization for perlin noise: convert everything into an image
     #and just have it scroll up
+    
+    gameMode_fillBoard(app, app.vibe['grass'])
+    gameMode_fillGrassAndTrees(app)
 
-    gameMode_fillBoard(app, app.happyColor)
-
-
-#"Restarts" app, including player pos, but keeps journal
     # gameMode_fillTrees(app)
+
+#tree class
+class Tree():
+    def __init__(self, loc):
+        self.loc = loc[0], loc[1]
+
+    def playerIsNear(self, app):
+        pX, pY = app.playerPos
+        pass
+
+class AppleTree(Tree):
+    def __init__(self, loc):
+        super().__init__()
+        self.apples = 3
+    
+    def pickApples(self):
+        if (self.apples == 0):
+            return 0
+        self.apples -= 1
+        return self.apples
+
 
 
 #-----------------------------------------------------------
@@ -338,7 +406,7 @@ def gameMode_expandBoard(app, dir):
 
 def gameMode_mousePressed(app, event):
     if (app.displayJournal):
-        if (100 <= event.x <= 200 and 200 <= event.y <= 300):
+        if (50 <= event.x <= 150 and 150 <= event.y <= 250):
             app.displayJournal = False
             #once done with reading journal, change into writing mode
             app.journal = open("journal.txt", "a+")
@@ -367,19 +435,30 @@ def gameMode_keyPressed(app, event):
             changeDate.write(f"{app.month}/{app.day}")
             changeDate.close()
             app.text = ""
+            detectWords(app)
             appStarted(app)
+    #how do i chceck if length of text is greater than smthn
+    if (app.textLenChecker >= 20):
+        app.textLenChecker = 0
+        app.text += "\n"
     if (len(event.key) == 1):
         app.text += event.key
+        app.textLenChecker += 1
         app.displayJournal = False 
-    if (event.key == "Space"):
-        app.text += " "
-    if (event.key == "Backspace"):
-        app.text = app.text[:-1]
-    if (app.text.lower() == "go home"):
-        app.goHome = True
-    if (event.key == 'Enter'):
-        app.journal.write(app.text + "\n")
-        app.text = ""
+    if (app.journal.mode != "r"):
+        if (event.key == "Space"):
+            app.text += " "
+            app.textLenChecker += 1
+        if (event.key == "Backspace"):
+            app.text = app.text[:-1]
+            app.textLenChecker -= 1
+        if (app.text.lower() == "go home"):
+            app.text = ""
+            app.goHome = True
+        if (event.key == 'Enter'):
+            app.journal.write(app.text + "\n")
+            app.text = ""
+            app.textLenChecker += 1
 
     #Player movement
     if (event.key == 'Up'):
@@ -402,6 +481,11 @@ def getCellBoundsinCartesianCoords(app, row, col):
     y0 = row * app.cellSize + app.margin
     y1 = (row + 1) * app.cellSize + app.margin
     return x0, y0, x1, y1
+
+def getRowCol(app, x, y):
+    row = (y - app.margin)//app.cellSize
+    col = (x - app.margin)/app.cellSize
+    return row, col
 
 def findDate(date):
     separator = date.find("/")
@@ -435,35 +519,48 @@ def gameMode_timerFired(app):
 # --------------------------------------
 def detectWords(app):
     #I should make lists for each of these words
-    happyCount = 0
-    sadCount = 0
-    neutralCount = 0
-    angryCount = 0
-    for date in app.journal:
+    #takes in singular lines and checks for "words"
+    app.journal.seek(0)
+    lines = app.journal.readlines()
+    for line in lines:
         #get entire text from entry
-        text = app.journal[date]
-        if ("happy" in text or "good" in text):
-            happyCount += 1
-        if ("sad" in text or "down" in text or "cry" in text):
-            sadCount += 1
-        if ("meh" in text or "thinking" in text or "lonely" in text or "know" in text):
-            neutralCount += 1
-        if ("mad" in text or "angry" in text):
-            angryCount += 1
-    changeColors(happyCount, sadCount, neutralCount, angryCount)
+        if ("happy" in line or "good" in line):
+            app.feelingsDict["happy"] = app.feelingsDict.get("happy", 0) + 1
+        if ("sad" in line or "down" in line or "cry" in line):
+            app.feelingsDict["sad"] = app.feelingsDict.get("sad", 0) + 1
+        if ("meh" in line or "thinking" in line or "lonely" in line or "know" in line):
+            app.feelingsDict["neutral"] = app.feelingsDict.get("neutral", 0) + 1
+        if ("mad" in line or "angry" in line):
+            app.feelingsDict["angry"] = app.feelingsDict.get("angry", 0) + 1
+    changeColors(app)
 
 def changeColors(app):
-    gameMode_fillBoard(app, app.sadColor)
+    largestMood = "happy"
+    largestMoodCount = 0
+    for feeling in app.feelingsDict:
+        print(feeling, app.feelingsDict[feeling])
+        if app.feelingsDict[feeling] > largestMoodCount:
+            largestMood = feeling
+            largestMoodCount = app.feelingsDict[feeling]
+    changeFeeling = open("feeling.txt", "w+")
+    changeFeeling.write(f"{largestMood}")
+    changeFeeling.close()
+
 
 #Fills board at beginning with colors, also called whenever new rows are added
 def gameMode_fillBoard(app, colorBoard):
     #colorBoard is a list of colors corresponding to emotion
+    #grassColorBoard is board that stores grass color
+    print(colorBoard)
     rows, cols = len(app.grassColorBoard), len(app.grassColorBoard[0])
     for row in range(rows):
         for col in range(cols):
             if app.grassColorBoard[row][col] == 0:
                 index = random.randint(0, len(colorBoard) - 1)
                 app.grassColorBoard[row][col] = colorBoard[index]
+
+def gameMode_fillGrassAndTrees(app):
+    rows, cols = len(app.grassTreeBoard), len(app.grassTreeBoard )
 
 #backtracking recursive function that makes words go onto the next line
 #this deals with singular lines not the entire journal
@@ -484,6 +581,9 @@ def padWords(app, line):
                     return newLine + padWords(app, line)
 
 
+def moveCamera(app, dx, dy):
+    #imma need a TA to explain this one..
+    pass
 
 #---------------------------------------
 # DRAW FUNCTIONS
@@ -495,7 +595,7 @@ def gameMode_drawCell(app, canvas, row, col, color):
     y0 = row * app.cellSize + app.margin
     x1 = (col + 1) * app.cellSize + app.margin
     y1 = (row + 1) * app.cellSize + app.margin
-    if (0 <= x0 <= app.width * 2 or 0 <= y0 <= app.height * 2):
+    if (0 <= x0 <= app.width * 3 or 0 <= y0 <= app.height * 3):
         #convert to isometric coords
         leftX, leftY = gameMode_2DToIso(app, x0, y0)
         topX, topY = gameMode_2DToIso(app, x0, y1)
@@ -515,19 +615,20 @@ def gameMode_drawCell(app, canvas, row, col, color):
         topX, topY = gameMode_2DToIso(app, x0, y1)
         botX, botY = gameMode_2DToIso(app, x1, y0)  
         rightX, rightY = gameMode_2DToIso(app, x1, y1)
-        yOffsetTopL = app.board[row][col] * app.heightFac
+        heightFac = app.vibe["heightFac"]
+        yOffsetTopL = app.board[row][col] * heightFac
         if (row + 1 < app.rows):
-            yOffsetBotL = app.board[row + 1][col] * app.heightFac
+            yOffsetBotL = app.board[row + 1][col] * heightFac
         else:
             yOffsetBotL = yOffsetTopL
         
         if (col + 1 < app.cols):
-            yOffsetTopR = app.board[row][col + 1] * app.heightFac
+            yOffsetTopR = app.board[row][col + 1] * heightFac
         else:
             yOffsetTopR = yOffsetTopL
         
         if (row + 1 < app.rows and col + 1 < app.cols):
-            yOffsetBotR = app.board[row + 1][col + 1] * app.heightFac
+            yOffsetBotR = app.board[row + 1][col + 1] * heightFac
         else:
             yOffsetBotR = yOffsetTopL
 
@@ -562,11 +663,15 @@ def gameMode_drawCell(app, canvas, row, col, color):
         # canvas.create_line(leftX, leftY, topX, topY, width = 2)
         cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
         cx, cy = gameMode_2DToIso(app, cx, cy)
-        if (color == app.happyColor[0]):
+        # if (color == app.happyColor[1] or color == app.happyColor[0] or color == app.happyColor[2]):
+        colorList = app.vibe["grass"]
+        if (color != colorList[0]):
+            grass = app.vibe["grassSprite"]
+            grass = getCachedPhotoImage(app, grass)
+            canvas.create_image(cx, cy - yOffsetTopL, image=grass)
+        else:
             tree = getCachedPhotoImage(app, app.treeSprite)
-            canvas.create_image(cx, cy - yOffsetTopL - 30, image=tree)
-
-
+            canvas.create_image(cx, cy - yOffsetTopL - 40, image=tree)
 
 def fillPerlin(app):
     for pX in range(0, app.newPerlinLength):
@@ -574,7 +679,14 @@ def fillPerlin(app):
             val = app.newPerlinBoard[pX][pY]
             val2 = app.perlinBoard[pX//2][pY//2]
             val3 = app.oct3PerlinBoard[pX//4][pY//4]
-            val = (val * 0.5) + (val2 * 0.5) + val3
+            if (app.vibe == app.madColorDict):
+                val = val #very small, kinda dotty clouds
+            elif (app.vibe == app.sadColorDict):
+                val = val3 #blocky, less clouds
+            elif (app.vibe == app.neutralColorDict):
+                val = val3 + val2 * 0.5 #slightly more normal looking clouds
+            else:
+                val = (val * 0.5) + (val2 * 0.5) + val3 #normal clouds!
             val = int((val) * 255)
             #Clamp it between black and white
             if (val >= 255):
@@ -613,12 +725,21 @@ def gameMode_drawPlayer(app, canvas):
     # row, col = app.playerPos
     # x = col * app.cellSize
     # y = row * app.cellSize
-    # yOffset = app.board[row][col] * app.heightFac
+    # yOffset = app.board[row][col] * heightFac
     x, y = app.playerPos
     # x, y = gameMode_2DToIso(app, x, y)
     # y += app.cellSize//2
     player = getCachedPhotoImage(app, app.playerSprite)
     canvas.create_image(x, y, image = player)
+    # row, col = getRowCol(app, x, y)
+    #i dont know how to get the player to appear in front of the tree...
+    # if (app.grassColorBoard[row][col] == app.happyColor[0]):
+    #     tree = getCachedPhotoImage(app, app.treeSprite)
+
+    #     cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+    #     cx, cy = gameMode_2DToIso(app, cx, cy)
+    #     canvas.create_image(cx, cy - yOffsetTopL - 128, image=tree)
+
 
 def gameMode_drawHome(app, canvas):
     canvas.create_rectangle(0, 0, app.height, app.width, fill = "black")
@@ -650,8 +771,10 @@ def gameMode_drawBoard(app, canvas):
 #         counter = obs.spriteCounter
 
 def gameMode_drawJournal(app, canvas):
-    canvas.create_rectangle(0, 0, app.width, app.height, fill = "#94c4f7")
-    canvas.create_rectangle(100, 200, 700, 600, fill = "#f5eace")
+    filter = app.sadFilter
+    filter = getCachedPhotoImage(app, filter)
+    canvas.create_image(400, 400, image= filter)
+    canvas.create_rectangle(50, 150, 750, 700, fill = "#f5eace")
     canvas.create_text(400, 220, text = "journal", 
                         font = "Courier 24 bold", anchor = "s")
     i = 0
@@ -659,17 +782,17 @@ def gameMode_drawJournal(app, canvas):
     lines = app.journal.readlines()
     for line in lines:
         #recursive func that returns word so it isn't going too far on page
-        if (len(line) >= 30):
-            textArr = padWords(line)
-        canvas.create_text (200, 250 + i * 20, text = line, font = "Courier 15 bold")
-        if (i >= 15): 
-            i = 0
+        # if (len(line) >= 30):
+        #     textArr = padWords(line)
+        if (i >= 25): 
             #put on next half of page
-            canvas.create_text (400, 250 + i * 20, text = line, font = "Courier 15 bold")
+            canvas.create_text (600, 250 + (i - 25) * 20, text = line, font = "Courier 12 bold")
+        else:
+            canvas.create_text (200, 250 + i * 20, text = line, font = "Courier 12 bold")
         i += 1
 
-    
-    canvas.create_image(150, 250, image=ImageTk.PhotoImage(app.journalCloseSprite))
+    journalClose = getCachedPhotoImage(app, app.journalCloseSprite)
+    canvas.create_image(100, 200, image=journalClose)
 
     # for key in app.journal:
     #     canvas.create_text (200, 250 + i * 20, text = key)
@@ -679,17 +802,16 @@ def gameMode_drawJournal(app, canvas):
     #         i += 1
 
 def gameMode_drawTextAndUI(app, canvas):
-    canvas.create_image(75, 75, image=ImageTk.PhotoImage(app.journalOpenSprite))
+    filter = app.vibe["filter"]
+    filter = getCachedPhotoImage(app, filter)
+    canvas.create_image(400, 400, image= filter)
+    journalOpen = getCachedPhotoImage(app, app.journalOpenSprite)
+    canvas.create_image(75, 75, image=journalOpen)
     canvas.create_text(app.width//2, 700, text = f"{app.text}", fill = "white",
                         font = "Courier 24 bold", anchor = "s")
 
 
 def gameMode_drawGrass(app, canvas):
-    grassSprite = getCachedPhotoImage(app, app.grassSprite)
-    for x in range(0, app.width, 200):
-        for y in range(0, app.height, 200):
-            canvas.create_image(x, y, image = grassSprite)
-
     # x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
     # cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
     # cx, cy = gameMode_2DToIso(app, cx, cy)
@@ -701,30 +823,33 @@ def gameMode_drawGrass(app, canvas):
     #                     fill = "green", start = 120, width = 0)
     #     canvas.create_arc(cx - 10, cy - 10, cx + 10, cy + 10, style = CHORD, 
     #                         fill = "green", start = 150, width = 0)
-
+    pass
     
 #To be implemented 
 def gameMode_drawTrees(app, canvas):
     pass
 
 def gameMode_drawBackground(app, canvas):
-    canvas.create_rectangle(0, 0, app.width, app.height, fill = "#71bff0")
+    
+    canvas.create_rectangle(0, 0, app.width, app.height, fill = f"#9bc7e8")
 
 
 
 def gameMode_redrawAll(app, canvas):
-    if (app.displayJournal):
-        gameMode_drawJournal(app, canvas)
-    elif (app.goHome):
+    if (app.goHome):
         gameMode_drawHome(app, canvas)
     else:
         gameMode_drawBackground(app, canvas)
         gameMode_drawBoard(app, canvas) 
-        gameMode_drawTrees(app, canvas)
         gameMode_drawGrass(app, canvas)
+        gameMode_drawTrees(app, canvas)
         gameMode_drawPlayer(app, canvas)
         gameMode_drawClouds(app, canvas)
         gameMode_drawTextAndUI(app, canvas)
+
+    if (app.displayJournal):
+        gameMode_drawJournal(app, canvas)
+
     # gameMode_drawObstacles(app, canvas)
 
 runApp(width = 800, height = 800)
