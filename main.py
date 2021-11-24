@@ -1,16 +1,16 @@
 from cmu_112_graphics import *
 import random
 import pygame
-# import text2emotion as te #take this out for mvp lol
 
-#Credits: Code for drawBoard, constraintsMet, drawCell (lines 713 - 728)
+#Credits: Code for drawBoard, constraintsMet, drawCell (first 10 lines)
 # taken from code I wrote for hack112 
 #2dToIso and IsoTo2D from: https://gamedevelopment.tutsplus.com/tutorials/creati
 # ng-isometric-worlds-a-primer-for-game-developers--gamedev-6511
 #Diamond square algorithm concept (not code) from: https://web.archive.org/web/2
 # 0060420054134/http://www.gameprogrammer.com/fractal.html#diamond
 #Perlin noise concept (not code) from https://web.archive.org/web/20170201233641
-# /https://mzucker.github.io/html/perlin-noise-math-faq.html
+# /https://mzucker.github.io/html/perlin-noise-math-faq.html and 
+#https://eev.ee/blog/2016/05/29/perlin-noise/
 #getCachedPhotoImage from : https://www.cs.cmu.edu/~112/notes/notes-animations-p
 # art4.html
 #Code for opening / closing / writing / reading files adapted from : https://www
@@ -18,8 +18,10 @@ import pygame
 #and https://stackoverflow.com/questions/28873349/python-readlines-not-returning
 # -anything
 #Camera movement idea (not code) from PIL/Pillow mini 3d lecture
+#https://scs.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=249eb6cc-06ee-450b-
+# 8d1e-adda0085dd69
 
-#Music by Louie Zong!! 
+#Music by Louie Zong    
 #east coast summer https://louiezong.bandcamp.com/track/east-coast-summer
 #golden hour https://www.youtube.com/watch?v=FlAahnk74x4&ab_channel=LouieZong 
 #acoustic dream https://www.youtube.com/watch?v=-vZSWGHrrgc&list=PLxQAFogMh4GWp
@@ -40,9 +42,6 @@ class Sound(object):
     def isPlaying(self):
         return bool(pygame.mixer.music.get_busy())
 
-    # Loops = number of times to loop the sound.
-    # If loops = 1 or 1, play it once.
-    # If loops > 1, play it loops + 1 times.
     # If loops = -1, loop forever.
     def start(self, loops=1):
         self.loops = loops
@@ -83,9 +82,10 @@ def appStarted(app):
     url = "player.png"
     app.playerSprite = app.loadImage(url)
     app.playerSprite = app.scaleImage(app.playerSprite, 1.3)
+    app.playerHalfHeight = 42
 
 
-    app.speed = 30
+    app.speed = 50
     app.lives = 3
     app.score = 0
     app.gameOver = False
@@ -212,21 +212,17 @@ def appStarted(app):
     #and just have it scroll up
     
     gameMode_fillBoard(app, app.vibe['grass'], app.grassColorBoard)
+    changeTreeList(app)
 
-    # gameMode_fillTrees(app)
-    # app.sound.start(loops = -1)
+    app.sound.start(loops = -1)
 
 
-#tree class
+#tree class to be implemented
 class Tree():
     def __init__(self, row, col):
         self.loc = (row, col)
         self.botOfTree = gameMode_2DToIso(row, col)
 
-        #store a list of tree locations???.......
-        #keep two lists ... and check.. if player
-        #is above or below... and then... draw all the trees once before
-        #and once after
 
 
 class AppleTree(Tree):
@@ -456,13 +452,15 @@ def getCachedPhotoImage(app, image):
 def getPlayerRowCol(app, x, y):
     cartX, cartY = gameMode_IsoTo2D(app, x, y)
     r, c = cartY//app.cellSize, cartX//app.cellSize
-    r, c = r + 3, c + 3
+    r, c = r + 1, c + 1
     return r, c
 
 
-#Checks for player movement
+#returns true if player x, y is within row, col bounds
 def gameMode_constraintsMet(app, x, y):
-    pass
+    row, col = getPlayerRowCol(app, x, y)
+    
+    return (1 <= row <= app.rows and 1 <= col <= app.cols)
 
 #If player is near edge of board, run diamond square on a new board
 #and append it to old one
@@ -470,76 +468,52 @@ def gameMode_expandBoard(app):
     playerX, playerY = app.playerPos
     r, c = getPlayerRowCol(app, playerX, playerY)
     newBoard = createNewDiamondSquare(app)
-    if (c >= app.cols - 3): #on one end
-        print("expand side actually..")
-        newBoard = diamondSquare(app, 16, newBoard)
-        #insert it on "side"
+    if (c >= app.cols - 3): #expand cols
         actualNewBoard = [[0] * (app.cols + 33) for row in range(app.rows)]
         newGrassBoard = copy.deepcopy(actualNewBoard)
+        #want to attach first chunk
+        bigChunk = [[0] * 33 for row in range(app.rows)]
+        for chunk in range((app.rows//33)):
+            newBoard = createNewDiamondSquare(app)
+            newBoard = diamondSquare(app, 16, newBoard)
+            for row in range(33 * chunk, 33 * (chunk + 1)):
+                for col in range(33): #ex for first one goes from 0 to 33
+                    bigChunk[row][col] = newBoard[row - (33 * chunk)][col]
         for row in range(app.rows):
             for col in range(app.cols + 33):
                 if (col < app.cols):
                     actualNewBoard[row][col] = app.board[row][col]
                     newGrassBoard[row][col] = app.grassColorBoard[row][col]
-                elif (col >= app.cols):
-                    actualNewBoard[row][col] = newBoard[row][col - app.cols]
-
+                elif (col >= app.cols): #go from row to app.cols
+                    actualNewBoard[row][col] = bigChunk[row][col - app.cols]
         app.board = actualNewBoard
         app.grassColorBoard = newGrassBoard
         app.rows, app.cols = len(app.board), len(app.board[0])
-        print(len(app.board), len(app.board[0]))
         gameMode_fillBoard(app, app.vibe['grass'], app.grassColorBoard)
-    # if (r >= app.rows - 3): #elif on far end
-    #     #insert it in back
-    #     print(r, c, "expand back")
-    #     newBoard = diamondSquare(app, 16, newBoard)
-    #     actualNewBoard = [[0] * (app.cols) for row in range(app.rows + 33)]
-    #     newGrassBoard = copy.deepcopy(actualNewBoard)
-    #     for row in range(app.rows + 33):
-    #         for col in range(app.cols):
-    #             if (row < app.rows):
-    #                 actualNewBoard[row][col] = app.board[row][col]
-    #                 newGrassBoard[row][col] = app.grassColorBoard[row][col]
-    #             elif (row >= app.rows):
-    #                 try:
-    #                     a = newBoard[row - app.rows][col]
-    #                 except:
-    #                     print(len(newBoard), len(newBoard[0]))
-    #                     print("app.rows/cols", app.rows, app.cols)
-    #                 x = newBoard[row - app.rows][col]
-    #                 actualNewBoard[row][col] = x
+    elif (r >= app.rows - 3): #elif on far end
+        actualNewBoard = [[0] * app.cols for row in range(app.rows + 33)]
+        newGrassBoard = copy.deepcopy(actualNewBoard)
+        #want to attach first chunk
+        bigChunk = [[0] * app.cols for row in range(33)]
+        for chunk in range((app.cols//33)):
+            newBoard = createNewDiamondSquare(app)
+            newBoard = diamondSquare(app, 16, newBoard)
+            for row in range(33):
+                for col in range(33 * chunk, 33 * (chunk + 1)): 
+                    a = newBoard[row][col - (33 * chunk)]
+                    bigChunk[row][col] = a
+        for row in range(app.rows + 33):
+            for col in range(app.cols):
+                if (row < app.rows):
+                    actualNewBoard[row][col] = app.board[row][col]
+                    newGrassBoard[row][col] = app.grassColorBoard[row][col]
+                elif (row >= app.rows): #go from row to app.cols
+                    actualNewBoard[row][col] = bigChunk[row - app.rows][col]
+        app.board = actualNewBoard
+        app.grassColorBoard = newGrassBoard
+        app.rows, app.cols = len(app.board), len(app.board[0])
+        gameMode_fillBoard(app, app.vibe['grass'], app.grassColorBoard)
 
-    #     app.board = actualNewBoard
-    #     app.grassColorBoard = newGrassBoard
-    #     app.rows, app.cols = len(app.board), len(app.board[0])
-    #     gameMode_fillBoard(app, app.vibe['grass'], app.grassColorBoard)
-
-
-    # elif (c <= 2):
-    #     #expand board on "top" ( add new rows )
-    #     print(r, c, "expand top")
-    #     newBoard = diamondSquare(app, 16, newBoard)
-    #     actualNewBoard = [[0] * (app.cols * 2) for row in range(app.rows)]
-    #     for row in range(app.rows):
-    #         for col in range(app.cols * 2):
-    #             if (col < app.cols):
-    #                 actualNewBoard[row][col] = app.board[row][col]
-    #             elif (row >= app.cols):
-    #                 actualNewBoard[row][col] = newBoard[row][col - app.cols]
-    #     print(len(app.board), len(app.board[0]))
-    #     app.board = actualNewBoard
-    # elif (c >= app.cols - 2):
-    #     print(r, c, "expand bottom")
-    #     newBoard = diamondSquare(app, 16, newBoard)
-    #     actualNewBoard = [[0] * (app.cols * 2) for row in range(app.cols)]
-    #     for row in range(app.rows):
-    #         for col in range(app.cols * 2):
-    #             if (row < app.cols):
-    #                 actualNewBoard[row][col] = app.board[row][col]
-    #             elif (row >= app.cols):
-    #                 actualNewBoard[row][col] = newBoard[row][col - app.cols]
-    #     app.board = actualNewBoard
-    
 
 def gameMode_mousePressed(app, event):
     if (app.displayJournal):
@@ -611,25 +585,26 @@ def gameMode_keyPressed(app, event):
 
     #Player movement
     if (event.key == 'Up'):
-        app.playerPos = (cx, cy - app.speed)
-        gameMode_moveCamera(app, "up")
-        gameMode_expandBoard(app)
+        if gameMode_constraintsMet(app, cx, cy - app.speed):
+            app.playerPos = (cx, cy - app.speed)
+            gameMode_moveCamera(app, "up")
     elif (event.key == 'Down'):
-        app.playerPos = (cx, cy + app.speed)
-        gameMode_moveCamera(app, "down")
-        gameMode_expandBoard(app)
+        if gameMode_constraintsMet(app, cx, cy + app.speed):
+            app.playerPos = (cx, cy + app.speed)
+            gameMode_moveCamera(app, "down")
     elif (event.key == 'Right'):
-        app.playerPos = (cx + app.speed, cy)
-        gameMode_moveCamera(app, "right")
-        gameMode_expandBoard(app)
+        if gameMode_constraintsMet(app, cx + app.speed, cy):
+            app.playerPos = (cx + app.speed, cy)
+            gameMode_moveCamera(app, "right")
     elif (event.key == 'Left'):
-        app.playerPos = (cx - app.speed, cy)
-        gameMode_moveCamera(app, "left")
-        gameMode_expandBoard(app)
+        if gameMode_constraintsMet(app, cx - app.speed, cy):
+            app.playerPos = (cx - app.speed, cy)
+            gameMode_moveCamera(app, "left")
     
     if (event.key == 'Up' or event.key == 'Down' or event.key == 'Right' or
         event.key == 'Left'):
         changeTreeList(app)
+        gameMode_expandBoard(app)
 
 
 def getCellBoundsinCartesianCoords(app, row, col):
@@ -668,14 +643,15 @@ def changeTreeList(app):
     playerX, playerY = app.playerPos
     for i in range(len(app.treeList)):
         row, col = app.treeList[i]
-        x0 = col * app.cellSize
-        y0 = row * app.cellSize
-        x, y = gameMode_2DToIso(app, x0, y0)
-        if (y <= playerY): #tree is behind player
+        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
+        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+        cx, cy = gameMode_2DToIso(app, cx, cy)
+        cy -= 120
+        if (cy <= playerY + 42): #tree is behind player
             app.behindTreeList.append((row, col))
             if ((row, col) in app.frontTreeList):
                 app.frontTreeList.remove((row, col))
-        elif (y >= playerY): #tree is in front of player
+        elif (cy >= playerY - 42): #tree is in front of player
             app.frontTreeList.append((row, col))
             if ((row, col) in app.behindTreeList):
                 app.behindTreeList.remove((row, col))
@@ -692,9 +668,6 @@ def gameMode_timerFired(app):
 def detectWords(app):
     app.journal.seek(0)
     lines = app.journal.readlines()
-    # lines = " ".join(lines)
-    # textdict = te.get_emotion(lines)
-    # print(textdict)
     for line in lines:
         #get entire text from entry
         if ("happy" in line or "good" in line):
@@ -711,7 +684,7 @@ def changeColors(app):
     largestMood = "happy"
     largestMoodCount = 0
     for feeling in app.feelingsDict:
-        print(feeling, app.feelingsDict[feeling])
+        # print(feeling, app.feelingsDict[feeling])
         if app.feelingsDict[feeling] > largestMoodCount:
             largestMood = feeling
             largestMoodCount = app.feelingsDict[feeling]
@@ -724,14 +697,9 @@ def changeColors(app):
 def gameMode_fillBoard(app, colorBoard, grassBoard):
     #colorBoard is a list of colors corresponding to emotion
     #grassColorBoard is board that stores grass color
-    print("changing color")
     rows, cols = len(grassBoard), len(grassBoard[0])
     for row in range(rows):
         for col in range(cols):
-            try:
-                a = grassBoard[row][col] 
-            except:
-                print(grassBoard[32:], "Rows: ", len(grassBoard), len(grassBoard[0]))
             if (grassBoard[row][col] == 0):
                 index = random.randint(0, len(colorBoard) - 1)
                 grassBoard[row][col] = colorBoard[index]
@@ -820,12 +788,12 @@ def gameMode_drawCell(app, canvas, row, col, color):
                                 botX, botY, leftX, leftY, fill = color )
         cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
         cx, cy = gameMode_2DToIso(app, cx, cy)
-        # canvas.create_text(cx, cy - yOffsetTopL, text = f"{row},{col}", font = "Courier 12 bold")
         colorList = app.vibe["grass"]
         if (color == colorList[1]):
             grass = app.vibe["grassSprite"]
             grass = getCachedPhotoImage(app, grass)
             canvas.create_image(cx, cy - yOffsetTopL, image=grass)
+        
 
 
 def fillPerlin(app):
@@ -870,8 +838,9 @@ def gameMode_drawClouds(app, canvas):
         for pY in range(0, app.newPerlinLength):
             offset = app.width // app.newPerlinLength
             color = app.perlinColor[pX][pY]
-            if (color != "#7ab7f0" and color != "#deecfc" and color != "#dae8f0"):
-                    canvas.create_rectangle(pX * offset - offset, pY * offset - offset, 
+            if(color!= "#7ab7f0" and color != "#deecfc" and color != "#dae8f0"):
+                    canvas.create_rectangle(pX * offset - offset, 
+                                    pY * offset - offset, 
                                     pX * offset + offset, pY * offset + offset, 
                                     fill = color, width = 0)
 
@@ -897,7 +866,8 @@ def gameMode_drawBoard(app, canvas):
     rows, cols = len(app.board), len(app.board[0])
     for row in range(rows):
         for col in range(cols):
-            gameMode_drawCell(app, canvas, row, col, app.grassColorBoard[row][col])
+            gameMode_drawCell(app, canvas, row, col, 
+                                app.grassColorBoard[row][col])
 
 
 def gameMode_drawJournal(app, canvas):
@@ -933,20 +903,6 @@ def gameMode_drawTextAndUI(app, canvas):
                         font = "Courier 24 bold", anchor = "s")
 
 
-def gameMode_drawGrass(app, canvas):
-    # x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
-    # cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
-    # cx, cy = gameMode_2DToIso(app, cx, cy)
-    # for _ in range(0, 3):
-    #     cy -= app.board[row][col] * app.heightFac
-    #     canvas.create_arc(cx - 20, cy - 20, cx, cy, style = CHORD, 
-    #                         fill = "green", start = 110, width = 0)
-    #     canvas.create_arc(cx , cy , cx + 20, cy + 20, style = CHORD, 
-    #                     fill = "green", start = 120, width = 0)
-    #     canvas.create_arc(cx - 10, cy - 10, cx + 10, cy + 10, style = CHORD, 
-    #                         fill = "green", start = 150, width = 0)
-    pass
-
 def gameMode_drawTreesInBack(app, canvas):
     for row, col in app.behindTreeList:
         x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
@@ -968,7 +924,6 @@ def gameMode_drawTreesInFront(app, canvas):
 
 
 def gameMode_drawBackground(app, canvas):
-    
     canvas.create_rectangle(0, 0, app.width, app.height, fill = f"#9bc7e8")
 
 
@@ -982,12 +937,11 @@ def gameMode_redrawAll(app, canvas):
         gameMode_drawTreesInBack(app, canvas)
         gameMode_drawPlayer(app, canvas)
         gameMode_drawTreesInFront(app, canvas)
-        # gameMode_drawClouds(app, canvas)
+        gameMode_drawClouds(app, canvas)
         gameMode_drawTextAndUI(app, canvas)
 
     if (app.displayJournal):
         gameMode_drawJournal(app, canvas)
 
-    # gameMode_drawObstacles(app, canvas)
 
 runApp(width = 800, height = 800) 
