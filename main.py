@@ -1,4 +1,8 @@
 from cmu_112_graphics import *
+from classes import *
+from perlin import *
+from helper import *
+from diamondsquare import *
 import random
 import pygame
 import text2emotion as te
@@ -22,6 +26,8 @@ import text2emotion as te
 #Camera movement idea (not code) from PIL/Pillow mini 3d lecture
 #https://scs.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=249eb6cc-06ee-450b-
 # 8d1e-adda0085dd69
+#File import code from https://stackoverflow.com/questions/20309456/call-a-func
+# tion-from-another-file
 
 #Music by Louie Zong    
 #east coast summer https://louiezong.bandcamp.com/track/east-coast-summer
@@ -47,27 +53,8 @@ import text2emotion as te
 # from-textual-data-b2e7b7ce1153
 #and https://pypi.org/project/text2emotion/#description
 
-#All art by me but inspiration taken from Animal Crossing (for trees)
+#All art by me, inspiration taken from Animal Crossing (for trees)
 #######################################
-
-class Sound(object):
-    def __init__(self, path):
-        self.path = path
-        self.loops = 1
-        pygame.mixer.music.load(path)
-
-    # Returns True if the sound is currently playing
-    def isPlaying(self):
-        return bool(pygame.mixer.music.get_busy())
-
-    # If loops = -1, loop forever.
-    def start(self, loops=1):
-        self.loops = loops
-        pygame.mixer.music.play(loops=loops)
-
-    # Stops the current sound from playing
-    def stop(self):
-        pygame.mixer.music.stop()
 
 #Initialize vars
 def appStarted(app):
@@ -79,6 +66,9 @@ def appStarted(app):
     app.helpSprite = app.scaleImage(app.helpSprite, 1.5)
     app.helpIcon = Icon("Help", (100, 700), app.helpSprite)
     app.isHelp = False
+    app.isCheat = False #used to change game mood at end of day
+    app.cheatMood = "happy"
+    #press h for happy, l for neutral, a for anxious, s for sad
 
     #change this to any num x where x = 2^n + 1
     app.rows = 33
@@ -108,8 +98,7 @@ def appStarted(app):
     app.playerSprite = 0
     app.spriteFactor = 1.5
 
-    url = "art/playerFrontIdle.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/playerFrontIdle.png")
     app.frontIdleSprite = []
     for i in range(2):
         sprite = spritestrip.crop((0, 64 * i, 64, 64 * (1 + i)))
@@ -117,9 +106,7 @@ def appStarted(app):
 
         app.frontIdleSprite.append(sprite) #append each sprite to array
 
-
-    url = "art/playerFrontWalk.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/playerFrontWalk.png")
     app.frontWalkSprite = []
     for i in range(2):
         sprite = spritestrip.crop((0, 64 * i, 64, 64 * (1 + i)))
@@ -128,8 +115,7 @@ def appStarted(app):
         app.frontWalkSprite.append(sprite) #append each sprite to array
 
 
-    url = "art/playerLeftIdle.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/playerLeftIdle.png")
     app.leftIdleSprite = []
     for i in range(2):
         sprite = spritestrip.crop((0, 64 * i, 64, 64 * (1 + i)))
@@ -137,8 +123,7 @@ def appStarted(app):
 
         app.leftIdleSprite.append(sprite) #append each sprite to array
 
-    url = "art/playerLeftWalk.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/playerLeftWalk.png")
     app.leftWalkSprite = []
     for i in range(2):
         sprite = spritestrip.crop((0, 64 * i, 64, 64 * (1 + i)))
@@ -146,8 +131,7 @@ def appStarted(app):
 
         app.leftWalkSprite.append(sprite) #append each sprite to array
 
-    url = "art/playerBack.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/playerBack.png")
     app.backIdleSprite = []
     app.backWalkSprite = []
     for i in range(4):
@@ -158,30 +142,45 @@ def appStarted(app):
         else:
             app.backWalkSprite.append(sprite)
             
-    url = "art/playerRightIdle.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/playerRightIdle.png")
     app.rightIdleSprite = []
     for i in range(2):
         sprite = spritestrip.crop((0, 64 * i, 64, 64 * (1 + i)))
         sprite = app.scaleImage(sprite, app.spriteFactor)
         app.rightIdleSprite.append(sprite) #append each sprite to array
 
-    url = "art/playerRightWalk.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/playerRightWalk.png")
     app.rightWalkSprite = []
     for i in range(2):
         sprite = spritestrip.crop((0, 64 * i, 64, 64 * (1 + i)))
         sprite = app.scaleImage(sprite, app.spriteFactor)
         app.rightWalkSprite.append(sprite) #append each sprite to array
 
-    url = "art/player.png"
-    app.playerHomeSprite = app.loadImage(url)
+    spritestrip = app.loadImage( "art/homePlayer.png")
+    app.leftHomeIdleSprite = []
+    app.rightHomeIdleSprite = []
+    app.rightHomeWalkSprite = []
+    app.leftHomeWalkSprite = []
+    app.homeSpriteCounter = 0
+    for i in range(4):
+        sprite = spritestrip.crop((0, 64 * i, 64, 64 * (1 + i)))
+        sprite = app.scaleImage(sprite, 4.5)
+        if (i <= 1):
+            app.leftHomeIdleSprite.append(sprite) #append each sprite to array
+        else:
+            app.leftHomeWalkSprite.append(sprite)
+    for i in range(2):
+        app.rightHomeWalkSprite.append(app.leftHomeWalkSprite[i].transpose(Image.FLIP_LEFT_RIGHT))
+    for i in range(2):
+        app.rightHomeIdleSprite.append(app.leftHomeIdleSprite[i].transpose(Image.FLIP_LEFT_RIGHT))
+
+    app.playerHomeSprite = app.leftHomeIdleSprite
 
     app.playerSpriteCounter = 0
     app.lastPressedCounter = 0
     app.lastPressedKey = "left"
     app.playerSprite = app.leftIdleSprite #set to this by default
-    app.speed = 50
+    app.speed = 30
     app.lives = 3
     app.score = 0
     app.brdWidth = 0
@@ -198,22 +197,17 @@ def appStarted(app):
     app.font = "Fixedsys"
     app.homeTextTimer = 3
     app.homeText = ""
-
+    app.lastClickedLoc = (0, 0)
 
     #INVENTORY VARS
     app.displayInventory = False
     app.inventoryGrid = [[0] * 7 for row in range(7)]
     #this stores order in which to draw items
     app.inventoryList = []
-    app.inventory = open("inventory.txt", "r")
-    url = "art/inventory.png"
-    app.inventorySprite = app.loadImage(url)
+    app.inventorySprite = app.loadImage("art/inventory.png")
     app.inventorySprite = app.scaleImage(app.inventorySprite, 3)
     app.inventoryIcon = Icon("Inventory", (700, 75), app.inventorySprite)
 
-    fillInventory(app) #fill inventory across days
-    app.inventory.close()
-    #REMINDER: have to have inventoryDict write to inventory file
 
     #INITIALIZE ITEMS (This includes recipes)
     app.appleSprite = app.loadImage("art/apple.png")
@@ -251,11 +245,10 @@ def appStarted(app):
     app.meatItem = Item("meat", (0, 0), app.meatSprite, False)
     app.scallionSprite = app.loadImage("art/scallion.png")
     app.scallionSprite = app.scaleImage(app.scallionSprite, 1)
-    app.scallionItem = Item("scallion", (0, 0), app.scallionSprite, False)
+    app.scallionItem = Item("scallions", (0, 0), app.scallionSprite, False)
     app.fennelSprite = app.loadImage("art/fennel.png")
     app.fennelSprite = app.scaleImage(app.fennelSprite, 1)
     app.fennelItem = Item("fennel", (0, 0), app.fennelSprite, False)
-    # app.plantList = [] #this is a list of PLANTSSSS not ITEMS
 
     #JOURNAL VARS
     app.journal = open("journal.txt", "a+")
@@ -282,40 +275,30 @@ def appStarted(app):
     #JOURNAL.TXT SHOULD BE EMPTY!!!
     #app.date updates with new day, write that day down
     app.journal.write(f"\n{app.month}/{app.day}\n") 
-    url = "art/journalopen.png"
-    app.journalOpenSprite = app.loadImage(url)
+    app.journalOpenSprite = app.loadImage("art/journalopen.png")
     app.rightArrowSprite = app.scaleImage(app.loadImage("art/rightarrow.png"), 0.5)
     app.leftArrowSprite = app.rightArrowSprite.transpose(Image.FLIP_LEFT_RIGHT)
     app.rightArrowIcon = Icon("Right Arrow", (700, 600), app.rightArrowSprite)
     app.leftArrowIcon = Icon("Left Arrow", (100, 600), app.leftArrowSprite)
 
-    url = "art/journalclose.png"
-    app.journalCloseSprite = app.loadImage(url)
-    app.journalOpenSprite = app.scaleImage(app.journalOpenSprite, 1)
+    app.journalCloseSprite = app.loadImage("art/journalclose.png")
     app.journalIcon = Icon("Journal", (75, 75), app.journalOpenSprite)
     app.closeIcon = Icon("Close", (75, 200), app.journalCloseSprite)
 
     app.vibe = app.feeling.read() #reads 'happy", "sad", "neutral", or "anx"
 
     #RECIPES
-    url = "art/tomatoandeggs.png"
-    app.tomatoEggSprite = app.loadImage(url)
+    app.tomatoEggSprite = app.loadImage("art/tomatoandeggs.png")
     app.tomatoEggSprite = app.scaleImage(app.tomatoEggSprite, 2)
-
-    url = "art/applecake.png"
-    app.appleCakeSprite = app.loadImage(url)
+    app.appleCakeSprite = app.loadImage("art/applecake.png")
     app.appleCakeSprite = app.scaleImage(app.appleCakeSprite, 2)
-
-    url = "art/dumplings.png"
-    app.dumplingSprite = app.loadImage(url)
+    app.dumplingSprite = app.loadImage("art/dumplings.png")
     app.dumplingSprite = app.scaleImage(app.dumplingSprite, 2)
 
-    url = "art/peachcobbler.png"
-    app.peachCobblerSprite = app.loadImage(url)
+    app.peachCobblerSprite = app.loadImage("art/peachcobbler.png")
     app.peachCobblerSprite = app.scaleImage(app.peachCobblerSprite, 2)
 
-    url = "art/porridge.png"
-    app.porridgeSprite = app.loadImage(url)
+    app.porridgeSprite = app.loadImage("art/porridge.png")
     app.porridgeSprite = app.scaleImage(app.porridgeSprite, 2)
 
     app.scallionNoodlesSprite = app.loadImage("art/scallionnoodles.png")
@@ -342,9 +325,7 @@ def appStarted(app):
                             "peach cobbler" : app.peachCobblerItem,
                             "scallion noodles" : app.scallionNoodlesItem}
 
-
-    url = "art/recipe.png"
-    app.recipeSprite = app.loadImage(url)
+    app.recipeSprite = app.loadImage("art/recipe.png")
     app.recipeList = initializeRecipeList(app)
 
     app.recipeIconSprite = app.loadImage("art/recipeSprite.png")
@@ -353,11 +334,9 @@ def appStarted(app):
 
 
     #HOME VARS
-    url = "art/room1.jpg"
-    room1 = app.loadImage(url)
+    room1 = app.loadImage("art/room1.jpg")
     room1 = app.scaleImage(room1, 4)
-    url = "art/room2.jpg"
-    room2 = app.loadImage(url)
+    room2 = app.loadImage("art/room2.jpg")
     room2 = app.scaleImage(room2, 4)
     app.homeBackground = [room1, room2]
     app.homeCounter = 0
@@ -372,16 +351,14 @@ def appStarted(app):
     app.cabinetOrder = ["flour", "rice", "sugar", "soy sauce", "noodles"]
     app.cabinetItems = [app.flourItem, app.riceItem, app.sugarItem, app.soySauceItem,
                         app.noodlesItem]
-    url = "art/fridge.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/fridge.png")
     app.fridgeSprite = []
     for i in range(2):
         sprite = spritestrip.crop((0, 96 * i, 96, 96 * (1 + i)))
         sprite = app.scaleImage(sprite, 3)
         app.fridgeSprite.append(sprite) #append each sprite to array
 
-    url = "art/home.png"
-    app.homeSprite = app.loadImage(url)
+    app.homeSprite = app.loadImage("art/home.png")
     app.homeSprite = app.scaleImage(app.homeSprite, 3)
     app.homeIcon = Icon("Home", (700, 700), app.homeSprite)
 
@@ -399,50 +376,41 @@ def appStarted(app):
 
     #Vars related to tree or nature stuff
     app.treeSpriteCounter = 0
-    url = "art/tree.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/tree.png")
     app.treeSprite = []
     for i in range(3):
         sprite = spritestrip.crop((0, 320 * i, 320, 320 * (1 + i)))
         sprite = app.scaleImage(sprite, 0.85)
         app.treeSprite.append(sprite) #append each sprite to array
 
-    url = "art/appletree.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/appletree.png")
     app.appleTreeSprite = []
     for i in range(3):
         sprite = spritestrip.crop((0, 320 * i, 320, 320 * (1 + i)))
         sprite = app.scaleImage(sprite, 0.85)
         app.appleTreeSprite.append(sprite) #append each sprite to array
-    url = "art/peachTree.png"
-    spritestrip = app.loadImage(url)
+    spritestrip = app.loadImage("art/peachTree.png")
     app.peachTreeSprite = []
     for i in range(3):
         sprite = spritestrip.crop((0, 320 * i, 320, 320 * (1 + i)))
         sprite = app.scaleImage(sprite, 0.85)
         app.peachTreeSprite.append(sprite) #append each sprite to array
 
-
-    url = "art/grass.png"
-    app.grassSprite = app.loadImage(url)
-    url = "art/neutralgrass.png"
-    app.neutralGrassSprite = app.loadImage(url)
-    url = "art/anxgrass.png"
-    app.anxGrassSprite = app.loadImage(url)
-    url = "art/sadgrass.png"
-    app.sadGrassSprite = app.loadImage(url)
+    app.treeLocSet = set()
+    app.frontTreeLocSet = set()
+    app.behindTreeLocSet = set() 
+    app.grassSprite = app.loadImage("art/grass.png")
+    app.neutralGrassSprite = app.loadImage("art/neutralgrass.png")
+    app.anxGrassSprite = app.loadImage("art/anxgrass.png")
+    app.sadGrassSprite = app.loadImage("art/sadgrass.png")
     app.skyBackground = app.loadImage("art/sky.png")
-    url = "art/neutralFilter.png"
-    app.neutralFilter = app.loadImage(url)
+    app.neutralFilter = app.loadImage("art/neutralFilter.png")
     app.neutralFilter = app.scaleImage(app.neutralFilter, 4)
-    url = "art/sadFilter.png"
-    app.sadFilter = app.loadImage(url)
+    app.sadFilter = app.loadImage("art/sadFilter.png")
     app.sadFilter = app.scaleImage(app.sadFilter, 4)
-    url = "art/happyFilter.png"
-    app.happyFilter = app.loadImage(url)
+    app.happyFilter = app.loadImage("art/happyFilter.png")
     app.happyFilter = app.scaleImage(app.happyFilter, 4)
-    url = "art/anxFilter.png"
-    app.anxFilter = app.loadImage(url)
+    app.anxFilter = app.loadImage("art/anxFilter.png")
     app.anxFilter = app.scaleImage(app.anxFilter, 4)
     url = "art/flowers1.png"
     url2 = "art/flowers2.png"
@@ -474,7 +442,7 @@ def appStarted(app):
     
     #SOUND VARS
     pygame.mixer.init()
-    app.playMusic = False
+    app.playMusic = True
     app.sound = ""
     if (app.vibe == "happy"):
         app.vibe = app.happyColorDict
@@ -531,302 +499,13 @@ def appStarted(app):
     perlinOctave2(app)
     perlinOctave3(app)
     fillPerlin(app)
-
-    #todo: optimization for perlin noise: convert everything into an image
-    #and just have it scroll up
     
     gameMode_fillBoard(app, app.vibe['grass'], app.grassColorBoard)
     changeTreeList(app)
     if (app.playMusic):
         app.sound.start(loops = -1)
 
-class Icon():
-    def __init__(self, name, loc, sprite):
-        self.name = name
-        self.loc = (loc[0], loc[1])
-        self.sprite = sprite
-    
-    def mouseClickedNear(self, other):
-        x, y = self.loc
-        return (abs(other.x - x) <= 30 and abs(other.y - y) <= 30)
-
-class Recipe():
-    def __init__(self, name, requiredIngredients, sprite):
-        self.name = name
-        self.ingredients = requiredIngredients
-        self.loc = (0, 0)
-        self.sprite = sprite
-
-class Item():
-    def __init__(self, name, loc, sprite, canEat):
-        self.loc = loc
-        self.name = name
-        self.sprite = sprite
-        self.count = 0
-        self.canEat = canEat
-    
-    def eat(self):
-        if (self.count > 0):
-            self.count -= 1
-            return True
-        return False
-    
-    def mouseClickedNear(self, other):
-        x, y = self.loc
-        return (abs(other.x - x) <= 50 and abs(other.y - y) <= 50)
-
-class Tree():
-    def __init__(self, app, row, col):
-        self.loc = (row, col)
-        self.sprite = app.treeSprite
-    
-    def mouseClickedNear(self, app, event):
-        row, col = self.loc
-        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
-        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
-        cx, cy = gameMode_2DToIso(app, cx, cy)
-        mouseX, mouseY = event.x, event.y
-        playerX, playerY = app.playerPos
-        return (abs(mouseX - cx) <= 120 and abs(mouseY - cy) <= 120 and
-                abs(playerX - cx) <= 250 and abs(playerY - cy) <= 250)
-
-    def getCenter(self, app):
-        row, col = self.loc
-        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
-        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
-        cx, cy = gameMode_2DToIso(app, cx, cy)
-        return (cx, cy)
-
-
-class Plant():
-    def __init__(self, app, row, col, sprite):
-        self.loc = (row, col)
-        self.sprite = sprite
-        self.picked = False
-        self.name = ""
-        if (self.sprite == app.scallionSprite):
-            self.name = "scallions"
-        else:
-            self.name = "fennel"
-    
-    def getCenter(self, app):
-        row, col = self.loc
-        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
-        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
-        cx, cy = gameMode_2DToIso(app, cx, cy)
-        return (cx, cy)
-
-
-class FruitTree(Tree): #apple or peach tree
-    def __init__(self, app, row, col, fruit, sprite):
-        super().__init__(app, row, col)
-        self.fruitPicked = False
-        self.sprite = sprite
-        self.fruit = fruit
-
-    def changeTree(self, app):
-        if (self.fruitPicked):
-            self.sprite = app.treeSprite
-
-
-#-----------------------------------------------------------
-# PERLIN FUNCTIONS
-#-----------------------------------------------------------
-
-def calcGradVec(app, board):
-    for row in range(len(board)):
-        for col in range(len(board[0])):
-            dx = random.randrange(0, 100)
-            dx = float(dx/100)
-            a2 = dx**2
-            b2 = (1 - a2) ** 0.5
-            dy = b2
-            chance = random.randint(0, 3)
-            if (chance == 1):
-                board[row][col] = (dx, dy)
-            elif (chance == 2):
-                board[row][col] = (-dx, dy)
-            elif (chance == 3):
-                board[row][col] = (-dx, -dy)
-            else:
-                board[row][col] = (dx, -dy )
-
-def calcDotProduct(corner, cur):
-    a, b = corner
-    c, d, = cur
-    return (a * c + b * d)
-
-def interpolate(a, b, t):
-    return a + t *(b  - a)
-
-def perlin(app, x, y):
-    #for every pixel, calculate distance from four points
-    #REMINDER: COL IS X, ROW IS Y
-    col = int((x - app.margin)//app.perlinCellSize) 
-    row = int((y - app.margin)//app.perlinCellSize) 
-    cornerVectorTL = app.gradBoard[row][col]
-    #Turn (x, y) into decimal points
-    x = float(x/app.perlinCellSize)
-    y = float(y/app.perlinCellSize)
-
-    distanceTL = (x - col, y - row)
-    #Calculate corner gradient vectors and distance from (x, y)
-    if (col + 1 < app.perlinCols):
-        cornerVectorTR = app.gradBoard[row][col + 1]
-        distanceTR = (x - col - 1, y - row)
-    else:
-        cornerVectorTR = cornerVectorTL
-        distanceTR = distanceTL
-    
-    if (row + 1 < app.perlinRows):
-        cornerVectorBL = app.gradBoard[row + 1][col]
-        distanceBL = (x - col, y - row - 1)
-
-    else:
-        cornerVectorBL = cornerVectorTL
-        distanceBL = distanceTL
-
-    
-    if (row + 1 < app.perlinRows and col + 1 < app.perlinCols):
-        cornerVectorBR = app.gradBoard[row + 1][col + 1]
-        distanceBR = (x - col - 1, y - row - 1)
-
-    else:
-        cornerVectorBR = cornerVectorTL
-        distanceBR = distanceTL
-
-    #calculate dot product of gradient vector at each of four corners
-    #and distance vector (distance from corner point to target point)
-    vecTL = calcDotProduct(cornerVectorTL, distanceTL)
-    vecTR = calcDotProduct(cornerVectorTR, distanceTR)
-    vecBL = calcDotProduct(cornerVectorBL, distanceBL)
-    vecBR = calcDotProduct(cornerVectorBR, distanceBR)
-    #average TL and TR
-    x1 = col
-    Sx = 3 * (x - x1)**2 -  2 * (x - x1)**3
-    a = interpolate(vecTL, vecTR, Sx)
-    b = interpolate(vecBL, vecBR, Sx)
-    y1 = row
-    Sy = 3*(y - y1)**2 - 2*(y - y1)**3
-    final = interpolate(a, b, Sy)
-    #code to keep final result between (0 ,1) from:
-    #http://adrianb.io/2014/08/09/perlinnoise.html
-    return (final + 0.3)
-
-def fillPerlinBoard(app):
-    for pX in range(0, app.perlinBoardLength):
-        for pY in range(0, app.perlinBoardLength):
-            val = perlin(app, pX, pY)
-            app.perlinBoard[pX][pY] = val
-
-def perlinOctave2(app):
-    for pX in range(0, app.newPerlinLength):
-        for pY in range(0, app.newPerlinLength):
-            val = perlin(app, pX, pY)
-            app.newPerlinBoard[pX][pY] = val
-
-def perlinOctave3(app):
-    for pX in range(0, app.oct3PerlinLength):
-        for pY in range(0, app.oct3PerlinLength):
-            val = perlin(app, pX, pY)
-            app.oct3PerlinBoard[pX][pY] = val
-
-#-----------------------------------------------------------
-# DIAMOND SQUARE FUNCTIONS
-#-----------------------------------------------------------
-
-#Recursively performs square step and diamond step until board is filled
-def diamondSquare(app, step, board):
-    if (step == 0):
-        return board
-    else:
-        for i in range(0, len(app.squareList), 4):
-            #get four points of square 
-            topLeftRow, topLeftCol = app.squareList[i]
-            bottomLeftRow, bottomLeftCol = app.squareList[i + 1]
-            bottomRightRow, bottomRightCol = app.squareList[i + 2]
-            topRightRow, topRightCol = app.squareList[i + 3]
-            average = (board[topLeftRow][topLeftCol] +
-             board[bottomLeftRow][bottomLeftCol] 
-             + board[bottomRightRow][bottomRightCol] 
-             + board[topRightRow][topRightCol])//4
-            #find average of four corners, add a random value to it
-            average += random.randint(0, 10) 
-            centerRow = app.squareList[i][0] + step
-            centerCol = app.squareList[i][1] + step
-            board[centerRow][centerCol] = average
-            #square step
-            center = (centerRow, centerCol)
-            calculateDiamondValues(app, i, center, step, board) 
-            addSquaresToList(app, i, center, step, board) 
-        sol = diamondSquare(app, step//2, board)
-        return sol
-
-#fill "diamond" extending out from center with average of values near it
-def calculateDiamondValues(app, i, center, step, board):
-    #first find four corners of square
-    tLRow, tLCol = app.squareList[i]
-    bLRow, bLCol = app.squareList[i + 1]
-    bRRow, bRCol = app.squareList[i + 2]
-    tRRow, tRCol = app.squareList[i + 3]
-
-
-    cRow, cCol = center
-    dlRow, dlCol = cRow, cCol - step
-    board[dlRow][dlCol]=(board[tLRow][tLCol] 
-                                    + board[bLRow][bLCol] +
-                                      board[cRow][cCol])//3
-    #diamondBottom
-    board[cRow + step][cCol]= (board[bRRow][bRCol] 
-                                    + board[bLRow][bLCol] + 
-                                    board[cRow][cCol])//3
-    #diamondRight
-    board[cRow][cCol + step] = (board[tRRow][tRCol] + 
-                                    board[bLRow][bLCol] + 
-                                    board[cRow][cCol])//3
-    #diamondTop
-    board[cRow - step][cCol] = (board[tLRow][tLCol] + 
-                                    board[tRRow][tRCol] + 
-                                    board[cRow][cCol])//3
-
-
-#add squares to center list
-def addSquaresToList(app, i, center, step, board):
-    topLeftRow, topLeftCol = app.squareList[i]
-    bottomLeftRow, bottomLeftCol = app.squareList[i + 1]
-    bottomRightRow, bottomRightCol = app.squareList[i + 2]
-    topRightRow, topRightCol = app.squareList[i + 3]
-
-    centerRow, centerCol = center
-    diamondLeftRow, diamondLeftCol = centerRow, centerCol - step
-    diamondRightRow, diamondRightCol = centerRow, centerCol + step
-    diamondBotRow, diamondBotCol = centerRow + step, centerCol
-    diamondTopRow, diamondTopCol = centerRow - step, centerCol
-
-    #add four squares for each "center" given
-    app.squareList += [(topLeftRow, topLeftCol), 
-                        (diamondLeftRow, diamondLeftCol), 
-                        (centerRow, centerCol),
-                        (diamondRightRow, diamondRightCol)]
-
-    app.squareList += [(diamondLeftRow, diamondLeftCol), 
-                        (bottomLeftRow, bottomLeftCol), 
-                        (diamondBotRow, diamondBotCol), 
-                        (centerRow, centerCol)]
-    app.squareList += [(diamondTopRow, diamondTopCol), 
-                        (centerRow, centerCol), 
-                        (diamondRightRow, diamondRightCol), 
-                        (topRightRow, topRightCol)]
-    app.squareList += [(centerRow, centerCol), 
-                        (diamondBotRow, diamondBotCol), 
-                        (bottomRightRow, bottomRightCol), 
-                        (diamondLeftRow, diamondLeftCol)]
-
 #Credits see top
-def gameMode_2DToIso(app, x, y):
-    newX = (x - y)/2 - app.prevX
-    newY = (x + y)/4 - app.prevY
-    return newX, newY
 
 def gameMode_IsoTo2D(app, x, y):
     newX = ((x + app.prevX) + 2 * (y + app.prevY))
@@ -931,6 +610,13 @@ def startScreen_mousePressed(app, event):
         app.isHelp = False
         pygame.mixer.find_channel().play(app.selectSound)
 
+def homeMode_keyReleased(app, event):
+    if (event.key == 'Right'):
+        app.lastPressedKey = "Right"
+    elif (event.key == 'Left'):
+        app.lastPressedKey = "Left"   
+
+
 
 def homeMode_mousePressed(app, event):
     if (app.displayJournal):
@@ -948,13 +634,13 @@ def homeMode_mousePressed(app, event):
             app.journal = open("journal.txt", "r")
             fillJournalDict(app)
 
-    if (withinRange(app, event, app.stoveLoc)):
+    if (withinRange(app, event, app.stoveLoc) and not (app.displayFridge or app.displayCabinet)):
         app.displayStove = True
         pygame.mixer.find_channel().play(app.openSound)
-    if (withinRange(app, event, app.fridgeLoc) and not app.displayCabinet):
+    if (withinRange(app, event, app.fridgeLoc) and not (app.displayCabinet or app.displayStove)):
         app.displayFridge = True
         pygame.mixer.find_channel().play(app.openSound)
-    if (withinRange(app, event, app.cabinetLoc) and not app.displayFridge):
+    if (withinRange(app, event, app.cabinetLoc) and not (app.displayFridge or app.displayStove)):
         app.displayCabinet = True
         pygame.mixer.find_channel().play(app.openSound)
 
@@ -980,7 +666,6 @@ def homeMode_mousePressed(app, event):
     if (app.displayInventory):
         for item in app.inventoryList:
             if item.mouseClickedNear(event):
-                print("clicked near", item.name)
                 if (item.eat()):
                     item.count -= 1
                     app.homeText = f"you ate {item.name}!"
@@ -1002,6 +687,7 @@ def homeMode_mousePressed(app, event):
                 app.homeTextTimer = 3
                 item.count += 1
                 pygame.mixer.find_channel().play(app.openSound)
+                app.lastClickedLoc = (item.loc[0], item.loc[1] - 50)
 
     if app.displayCabinet:
         if (app.closeIcon.mouseClickedNear(event)):
@@ -1015,6 +701,7 @@ def homeMode_mousePressed(app, event):
                 app.homeTextTimer = 3
                 item.count += 1
                 pygame.mixer.find_channel().play(app.openSound)
+                app.lastClickedLoc = (item.loc[0], item.loc[1] - 50)
 
     if app.displayStove:
         if (app.closeIcon.mouseClickedNear(event)):
@@ -1034,7 +721,6 @@ def homeMode_mousePressed(app, event):
                 #check if cancook, ex. if player has 3 tomatoes and 2 eggs
                 if (curIngredientCount != len(recipeDict)):
                     canCook = False
-                    print('insufficient ingredients')
                     app.homeText = "insufficient ingredients!"
                     pygame.mixer.find_channel().play(app.selectSound)
                     app.homeTextTimer = 3
@@ -1044,7 +730,6 @@ def homeMode_mousePressed(app, event):
                             if (ingredient == item.name):
                                 item.count -= recipeDict[ingredient]
                         #remove used ingredients
-                    print("cooked recipe")
                     app.homeText = f"cooked {recipe.name}!"
                     pygame.mixer.find_channel().play(app.openSound)
                     app.homeTextTimer = 3
@@ -1105,7 +790,7 @@ def gameMode_mousePressed(app, event):
         app.text = ""
         app.playerPos = (400, 450)
         # update vars for home
-        app.playerSprite = app.scaleImage(app.playerHomeSprite, 3.7)
+        app.playerSprite = app.leftHomeIdleSprite
         app.goHome = True
         app.timerDelay = 500
         app.sound = Sound("music/tides of summer.mp3")
@@ -1131,7 +816,9 @@ def gameMode_mousePressed(app, event):
                         if (app.peachItem not in app.inventoryList):
                             #inventoryList stores list of ITEMS not their names
                             app.inventoryList.append(app.peachItem)
-
+                    app.homeTextTimer = 3
+                    app.lastClickedLoc = (cx, cy - 120)
+                    app.homeText = f"{tree.fruit} + 3"
                     break   
                     
 
@@ -1175,6 +862,19 @@ def homeMode_keyPressed(app, event):
         else:
             app.goBedConfirm = False
     if (app.goBed):
+        if (event.key == "h"):
+            app.cheatMood = "happy"
+            app.isCheat = True
+        elif (event.key == "s"):
+            app.cheatMood = "sad"
+            app.isCheat = True
+        elif (event.key == "a"):
+            app.cheatMood = "anx"
+            app.isCheat = True
+        elif (event.key == "l"):
+            app.cheatMood = "neutral"
+            app.isCheat = True
+
         if (event.key == "y"):
             app.goHome = False
             changeDate = open("date.txt", "w+")
@@ -1197,10 +897,12 @@ def homeMode_keyPressed(app, event):
     if (event.key == 'Right'):
         if (homeMode_constraintsMet(app, cx + app.speed, "right")):
             app.playerPos = (cx + app.speed, cy)
+            app.playerHomeSprite = app.rightHomeWalkSprite
             homeMode_moveCamera(app, "right")
     if (event.key == 'Left'):
         if (homeMode_constraintsMet(app, cx - app.speed, "left")):
             app.playerPos = (cx - app.speed, cy)
+            app.playerHomeSprite = app.leftHomeWalkSprite
             homeMode_moveCamera(app, "left")
 
 def gameMode_keyPressed(app, event):
@@ -1262,26 +964,10 @@ def gameMode_keyReleased(app, event):
     elif (event.key == 'Left'):
         app.lastPressedKey = "Left"   
 
-def getCellBoundsinCartesianCoords(app, row, col):
-    x0 = col * app.cellSize + app.margin
-    x1 = (col + 1) * app.cellSize + app.margin
-    y0 = row * app.cellSize + app.margin
-    y1 = (row + 1) * app.cellSize + app.margin
-
-    return x0, y0, x1, y1
-
 def getRowCol(app, x, y):
     row = (y - app.margin)//app.cellSize
     col = (x - app.margin)/app.cellSize
     return row, col
-
-def fillInventory(app):
-    inventorylines = app.inventory.read() #will return array of lines
-    for line in inventorylines:  #ex apples 3
-        entry = line.split(" ") #splits into array [apples, 3]
-        item = entry[0]
-        number = entry[1] 
-        app.inventory[item] = number
 
 #Returns date
 def findDate(date):
@@ -1327,6 +1013,7 @@ def moveClouds(app):
 def fillJournalDict(app):
     app.journal.seek(0)
     lines = app.journal.readlines()
+    app.journalDict = dict()
     for i in range(0, len(lines)):
         app.journalDict[i//40] = app.journalDict.get(i//40, []) + [lines[i]]
 
@@ -1335,14 +1022,11 @@ def changeTreeList(app):
     for i in range(len(app.treeList)):
         tree = app.treeList[i]
         cx, cy = tree.getCenter(app)
-        if (cy <= playerY - 42): #tree is behind player
-            app.behindTreeList.append(tree)
-            if (tree in app.frontTreeList):
-                app.frontTreeList.remove(tree)
-        elif (cy >= playerY + 42): #tree is in front of player
-            app.frontTreeList.append(tree)
-            if (tree in app.behindTreeList):
-                app.behindTreeList.remove(tree)
+        if (0 <= cx <= app.width * 2 and 0 <= cy <= app.height * 2):
+            if (cy < playerY + 42): #tree is behind player
+                tree.isFront = False
+            if (cy >= playerY + 42): #tree is in front of player
+                tree.isFront = True
 
 def homeMode_timerFired(app):
     x, y = app.playerPos
@@ -1359,13 +1043,22 @@ def homeMode_timerFired(app):
         app.bedSpriteCounter = 0
     else:
         app.bedSpriteCounter = 1
+    app.homeSpriteCounter = (1 + app.homeSpriteCounter) % len(app.playerHomeSprite)
+    app.lastPressedCounter += 1
+    if (app.lastPressedCounter >= 1):
+        if (app.lastPressedKey == 'Right'):
+            app.playerHomeSprite = app.rightHomeIdleSprite
+        elif (app.lastPressedKey == 'Left'):
+            app.playerHomeSprite = app.leftHomeIdleSprite   
+        app.lastPressedCounter = 0
+    app.lastClickedLoc = (app.lastClickedLoc[0], app.lastClickedLoc[1] - 10)
 
 def gameMode_timerFired(app):
     moveClouds(app)
     app.playerSpriteCounter = (1 + app.playerSpriteCounter) % len(app.playerSprite)
     app.treeSpriteCounter = (1 + app.treeSpriteCounter) % len(app.treeSprite)
     app.lastPressedCounter += 1
-    if (app.lastPressedCounter >= 1):
+    if (app.lastPressedCounter >= 1): #waits a bit before changing animation
         if (app.lastPressedKey == 'Up'):
             app.playerSprite = app.backIdleSprite
         elif (app.lastPressedKey == 'Down'):
@@ -1379,6 +1072,10 @@ def gameMode_timerFired(app):
         app.flowerSpriteCounter = 0
     else:
         app.flowerSpriteCounter = 1
+    app.lastClickedLoc = (app.lastClickedLoc[0], app.lastClickedLoc[1] - 10)
+    app.homeTextTimer -= 1
+    if (app.homeTextTimer == 0): #messages stay for 3 * app.timerDelay secs
+        app.homeTextTimer = 0
 
 #---------------------------------------
 # JOURNAL FUNCTIONS
@@ -1398,7 +1095,7 @@ def detectWords(app):
                 break
     lines = " ".join(lines)
     app.feelingsDict = te.get_emotion(lines)
-    print(app.feelingsDict)
+    # print(app.feelingsDict)
     changeColors(app)
 
 def changeColors(app):
@@ -1408,7 +1105,6 @@ def changeColors(app):
         # print(feeling, app.feelingsDict[feeling])
         if app.feelingsDict[feeling] > largestMoodCount:
             largestMood = feeling
-            print("changing")
             largestMoodCount = app.feelingsDict[feeling]
     if (largestMood == "Happy"):
         largestMood = "happy"
@@ -1418,6 +1114,8 @@ def changeColors(app):
         largestMood = "anx"
     else:
         largestMood = "sad"
+    if (app.isCheat):
+        largestMood = app.cheatMood
     changeFeeling = open("feeling.txt", "w+")
     changeFeeling.write(f"{largestMood}")
     changeFeeling.close()
@@ -1539,41 +1237,6 @@ def gameMode_drawCell(app, canvas, row, col, color):
             canvas.create_image(cx, cy - yOffsetTopL, image=grass)
         
 
-def fillPerlin(app):
-    for pX in range(0, app.newPerlinLength):
-        for pY in range(0, app.newPerlinLength):
-            val = app.newPerlinBoard[pX][pY]
-            val2 = app.perlinBoard[pX//2][pY//2]
-            val3 = app.oct3PerlinBoard[pX//4][pY//4]
-            if (app.vibe == app.anxColorDict):
-                val = val #very small, kinda dotty clouds
-            elif (app.vibe == app.sadColorDict):
-                val = val3 #blocky, less clouds
-            elif (app.vibe == app.neutralColorDict):
-                val = val3 + val2 * 0.5 #slightly more normal looking clouds
-            else:
-                val = (val * 0.5) + (val2 * 0.5) + val3 #normal clouds!
-            val = int((val) * 255)
-            #Clamp it between black and white
-            if (val >= 255):
-                val = 255
-            elif (val <= 0):
-                val = 0
-            color = 0
-            if (val >= 200):
-                color = "#ffffff"
-            elif (val >= 180):
-                color = "#e8f1fc"
-            elif (val >= 150):
-                color = "#deecfc"
-            elif (val >= 120):
-                color = "#dae8f0"
-            elif (val >= 80):
-                color = "#7ab7f0"
-            else:
-                color = "#7ab7f0"
-            app.perlinColor[pX][pY] = color
-
 def gameMode_drawClouds(app, canvas):
     #Goes from 0 to 100
     for pX in range(0, app.newPerlinLength):
@@ -1664,9 +1327,10 @@ def gameMode_drawPlayer(app, canvas):
     player = getCachedPhotoImage(app, app.playerSprite[app.playerSpriteCounter])
     canvas.create_image(x, y, image = player)
 
+
 def homeMode_drawPlayer(app, canvas):
     x, y = app.playerPos
-    player = getCachedPhotoImage(app, app.playerSprite)
+    player = getCachedPhotoImage(app, app.playerHomeSprite[app.homeSpriteCounter])
     canvas.create_image(x, y, image = player)
 
 
@@ -1727,29 +1391,25 @@ def gameMode_drawTextAndUI(app, canvas):
     canvas.create_text(app.width//2, 700, text = f"{app.text}", fill = "white",
                         font = "Fixedsys 24 bold", anchor = "s")
 
+    if (app.homeTextTimer > 0):
+        homeMode_drawText(app, canvas, app.lastClickedLoc)
 
 
 def gameMode_drawTreesInBack(app, canvas):
-    for tree in app.behindTreeList:
-        row, col = tree.loc
-        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
-        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
-        cx, cy = gameMode_2DToIso(app, cx, cy)
-        if (0 <= cx <= app.width * 2 and 0 <= cy <= app.height * 2):
-            tree = getCachedPhotoImage(app, tree.sprite[app.treeSpriteCounter])
-            canvas.create_image(cx, cy - 120, image=tree)
-    
-
+    for tree in app.treeList:
+        if not (tree.isFront):
+            cx, cy = tree.getCenter(app)
+            if (0 <= cx <= app.width * 2 and 0 <= cy <= app.height * 2):
+                tree = getCachedPhotoImage(app, tree.sprite[app.treeSpriteCounter])
+                canvas.create_image(cx, cy - 120, image=tree)
 
 def gameMode_drawTreesInFront(app, canvas):
-    for tree in app.frontTreeList:
-        row, col = tree.loc
-        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
-        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
-        cx, cy = gameMode_2DToIso(app, cx, cy)
-        if (0 <= cx <= app.width * 2 and 0 <= cy <= app.height * 2):
-            tree = getCachedPhotoImage(app, tree.sprite[app.treeSpriteCounter])
-            canvas.create_image(cx, cy - 120, image=tree)
+    for tree in app.treeList:
+        if (tree.isFront):
+            cx, cy = tree.getCenter(app)
+            if (0 <= cx <= app.width * 2 and 0 <= cy <= app.height * 2):
+                tree = getCachedPhotoImage(app, tree.sprite[app.treeSpriteCounter])
+                canvas.create_image(cx, cy - 120, image=tree)
 
 
 def gameMode_drawBackground(app, canvas):
@@ -1763,8 +1423,8 @@ def homeMode_drawHome(app, canvas):
     canvas.create_image(400 - app.homeX, 400, image = home)
 
 
-def homeMode_drawText(app, canvas):
-    canvas.create_text(app.width//2, 150, text = f"{app.homeText}", 
+def homeMode_drawText(app, canvas, loc):
+    canvas.create_text(int(loc[0]), int(loc[1]), text = f"{app.homeText}", 
                         font = f"{app.font} 12 bold", fill = "white")
 
 def homeMode_drawBed(app, canvas):
@@ -1863,7 +1523,7 @@ def homeMode_drawUI(app, canvas):
         gameMode_drawJournal(app, canvas)
     
     if (app.homeTextTimer > 0):
-        homeMode_drawText(app, canvas)
+        homeMode_drawText(app, canvas, app.lastClickedLoc)
 
     journalOpen = getCachedPhotoImage(app, app.journalIcon.sprite)
     canvas.create_image(app.journalIcon.loc[0], app.journalIcon.loc[1], image=journalOpen)
