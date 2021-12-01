@@ -5,14 +5,9 @@ import text2emotion as te
 
 '''
 to-do - perennial summer
-11/29 - finish UI for home, journal, inventory, recipe, inventory done
-11/30 - add sound and start + end screen + sleep screen, 
-        fancier lighting overlays (i give up on this)
-        , add flowers (done) and GRASS (to do....)
+11/30 - add pages function, fancier lighting overlays if time,
         eat recipes
-        (i have tues 12 - 7 ish, 9 - whenever to work on this)
-12/1 - add birds, misc bug fixes (in front/ behind trees),
-        then i will be free.... so close.... yet so far
+12 / 1 - record videoooo
 '''
 
 #Credits: Code for drawBoard, constraintsMet, drawCell (first 10 lines)
@@ -270,6 +265,8 @@ def appStarted(app):
 
     #JOURNAL VARS
     app.journal = open("journal.txt", "a+")
+    app.journalDict = dict() #stores pages
+    app.currentPage = 0
     app.date = open("date.txt", "r")
     app.feeling = open("feeling.txt", "r")
     #stores journal lines
@@ -293,6 +290,11 @@ def appStarted(app):
     app.journal.write(f"\n{app.month}/{app.day}\n") 
     url = "journalopen.png"
     app.journalOpenSprite = app.loadImage(url)
+    app.rightArrowSprite = app.scaleImage(app.loadImage("rightarrow.png"), 0.5)
+    app.leftArrowSprite = app.rightArrowSprite.transpose(Image.FLIP_LEFT_RIGHT)
+    app.rightArrowIcon = Icon("Right Arrow", (700, 600), app.rightArrowSprite)
+    app.leftArrowIcon = Icon("Left Arrow", (100, 600), app.leftArrowSprite)
+
     url = "journalclose.png"
     app.journalCloseSprite = app.loadImage(url)
     app.journalOpenSprite = app.scaleImage(app.journalOpenSprite, 1)
@@ -398,7 +400,7 @@ def appStarted(app):
     app.fridgeLoc = (350, 400)
     app.cabinetLoc = (200, 250)
     app.stoveLoc = (0, 400)
-    app.bedLoc = (1300, 450)
+    app.bedLoc = (1100, 450)
     app.leftEndLoc = (-100, 450)
 
 
@@ -854,9 +856,13 @@ def getPlayerRowCol(app, x, y):
 
 
 #returns true if player x, y is within row, col bounds
-def homeMode_constraintsMet(app, x):
+def homeMode_constraintsMet(app, x, dir):
     x, y = app.playerPos
-    return (x > app.leftEndLoc[0])
+    if (x >= app.bedLoc[0] and dir == "left"):
+        return True
+    elif (x <= app.leftEndLoc[0] and dir == "right"):
+        return True
+    return (x > app.leftEndLoc[0] and x <= app.bedLoc[0])
 
 def gameMode_constraintsMet(app, x, y, dir):
     row, col = getPlayerRowCol(app, x, y)
@@ -945,10 +951,12 @@ def homeMode_mousePressed(app, event):
     elif (app.journalIcon.mouseClickedNear(event)):
         pygame.mixer.find_channel().play(app.openSound)
         app.displayJournal = True 
-        if (app. displayJournal):
+        if (app.displayJournal):
             app.journal.close()
             #change it into reading mode to display text
             app.journal = open("journal.txt", "r")
+            fillJournalDict(app)
+
     if (withinRange(app, event, app.stoveLoc)):
         app.displayStove = True
         pygame.mixer.find_channel().play(app.openSound)
@@ -1048,18 +1056,31 @@ def homeMode_mousePressed(app, event):
 
 def gameMode_mousePressed(app, event):
     if (app.displayJournal):
+        if (app.rightArrowIcon.mouseClickedNear(event)):
+            if (app.currentPage < len(app.journalDict) - 1):
+                app.currentPage += 1
+                pygame.mixer.find_channel().play(app.openSound)
+        elif (app.leftArrowIcon.mouseClickedNear(event)):
+            if (app.currentPage == 0):
+                pass #don't go to next page if current page is max page
+            else:
+                app.currentPage -= 1
+                pygame.mixer.find_channel().play(app.openSound)
+
         if (app.closeIcon.mouseClickedNear(event)):
             app.displayJournal = False
             #once done with reading journal, change into writing mode
             app.journal = open("journal.txt", "a+")
-        pygame.mixer.find_channel().play(app.selectSound)
+            pygame.mixer.find_channel().play(app.selectSound)
     elif (app.journalIcon.mouseClickedNear(event)):
         app.displayJournal = True 
         if (app. displayJournal):
             app.journal.close()
             #change it into reading mode to display text
             app.journal = open("journal.txt", "r")
+            fillJournalDict(app)
         pygame.mixer.find_channel().play(app.openSound)
+
     elif (app.recipeIcon.mouseClickedNear(event)):
         app.displayRecipe = True
         pygame.mixer.find_channel().play(app.openSound)
@@ -1136,6 +1157,7 @@ def homeMode_moveCamera(app, dir):
             app.fridgeLoc = (app.fridgeLoc[0] + app.homeCameraOffset, app.fridgeLoc[1])
             app.cabinetLoc = (app.cabinetLoc[0] + app.homeCameraOffset, app.cabinetLoc[1])
             app.bedLoc = (app.bedLoc[0] + app.homeCameraOffset, app.bedLoc[1])
+            app.leftEndLoc = (app.leftEndLoc[0] + app.homeCameraOffset, app.leftEndLoc[1])
 
     elif (dir == "right"):
         if (x >= app.width - app.boundingBoxLimit):
@@ -1144,6 +1166,7 @@ def homeMode_moveCamera(app, dir):
             app.fridgeLoc = (app.fridgeLoc[0] - app.homeCameraOffset, app.fridgeLoc[1])
             app.cabinetLoc = (app.cabinetLoc[0] - app.homeCameraOffset, app.cabinetLoc[1])
             app.bedLoc = (app.bedLoc[0] - app.homeCameraOffset, app.bedLoc[1])
+            app.leftEndLoc = (app.leftEndLoc[0] - app.homeCameraOffset, app.leftEndLoc[1])
 
 def homeMode_keyPressed(app, event):
     cx, cy = app.playerPos
@@ -1173,9 +1196,11 @@ def homeMode_keyPressed(app, event):
             app.gameOver = True
 
     if (event.key == 'Right'):
+        if (homeMode_constraintsMet(app, cx + app.speed, "right")):
             app.playerPos = (cx + app.speed, cy)
             homeMode_moveCamera(app, "right")
     if (event.key == 'Left'):
+        if (homeMode_constraintsMet(app, cx - app.speed, "left")):
             app.playerPos = (cx - app.speed, cy)
             homeMode_moveCamera(app, "left")
 
@@ -1199,7 +1224,7 @@ def gameMode_keyPressed(app, event):
         if (event.key == 'Enter'):
             app.journal.write(app.text + "\n")
             app.text = ""
-            app.textLenChecker += 1
+            app.textLenChecker = 0
 
     #Player movement
     if (event.key == 'Up'):
@@ -1299,6 +1324,12 @@ def moveClouds(app):
                 newColor = app.perlinColor[pX - 1][pY + 1]
             tempBoard[pX][pY] = newColor
     app.perlinColor = tempBoard
+
+def fillJournalDict(app):
+    app.journal.seek(0)
+    lines = app.journal.readlines()
+    for i in range(0, len(lines)):
+        app.journalDict[i//40] = app.journalDict.get(i//40, []) + [lines[i]]
 
 def changeTreeList(app):
     playerX, playerY = app.playerPos
@@ -1656,6 +1687,8 @@ def homeMode_drawPlayer(app, canvas):
     canvas.create_image(x, y, image = player)
 
 
+
+
 def gameMode_drawBoard(app, canvas):
     rows, cols = len(app.board), len(app.board[0])
     for row in range(rows):
@@ -1675,7 +1708,9 @@ def gameMode_drawJournal(app, canvas):
     i = 0
     app.journal.seek(0)
     lines = app.journal.readlines()
-    for line in lines:
+    # print(app.journalDict)
+    #only display 40 lines at a time
+    for line in app.journalDict[app.currentPage]:
         if (i >= 20): 
             #put on next half of page
             canvas.create_text (600, 250 + (i - 20) * 20, text = line, 
@@ -1684,6 +1719,13 @@ def gameMode_drawJournal(app, canvas):
             canvas.create_text (200, 230 + i * 20, text = line, 
             font = f"{app.font} 12")
         i += 1
+
+    canvas.create_text(100, 700, text = f"page {app.currentPage + 1}",
+                        font = f"{app.font} 24 bold")
+    leftArrow = getCachedPhotoImage(app, app.leftArrowIcon.sprite)
+    canvas.create_image(app.leftArrowIcon.loc[0], app.leftArrowIcon.loc[1], image=leftArrow)
+    rightArrow = getCachedPhotoImage(app, app.rightArrowIcon.sprite)
+    canvas.create_image(app.rightArrowIcon.loc[0], app.rightArrowIcon.loc[1], image=rightArrow)
 
     journalClose = getCachedPhotoImage(app, app.journalCloseSprite)
     canvas.create_image(75, 200, image=journalClose)
@@ -1749,8 +1791,6 @@ def homeMode_drawHome(app, canvas):
     canvas.create_rectangle(0, 0, app.height, app.width, fill = "black")
     home = getCachedPhotoImage(app, app.homeBackground[app.homeCounter])
     canvas.create_image(400 - app.homeX, 400, image = home)
-    x, y = app.bedLoc
-    canvas.create_rectangle(x - 50, y - 50, x + 50, y + 50, fill = "white")
 
 
 def homeMode_drawText(app, canvas):
