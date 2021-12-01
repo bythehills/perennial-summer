@@ -3,14 +3,8 @@ import random
 import pygame
 import text2emotion as te
 
-'''
-to-do - perennial summer
-11/30 - add pages function, fancier lighting overlays if time,
-        eat recipes
-12 / 1 - record videoooo
-'''
 
-#Credits: Code for drawBoard, constraintsMet, drawCell (first 10 lines)
+#Credits: Code for drawBoard, drawCell (first 10 lines)
 # taken from code I wrote for hack112 
 #2dToIso and IsoTo2D from: https://gamedevelopment.tutsplus.com/tutorials/creati
 # ng-isometric-worlds-a-primer-for-game-developers--gamedev-6511
@@ -44,15 +38,16 @@ to-do - perennial summer
 # -sound-effects-on-top-of-each-other-pygame
 #Sound effects created with https://sfxr.me/
 
-#Sprite-related code (spritesheet, spritecounter, cropping) from:
+#Sprite-related code (spritesheet, spritecounter, cropping, scaling) from:
 #also scaling image code and screen mode code
 #https://www.cs.cmu.edu/~112/notes/notes-animations-part4.html
 
 #Text to emotion module and code taken from
 #https://towardsdatascience.com/text2emotion-python-package-to-detect-emotions-
 # from-textual-data-b2e7b7ce1153
+#and https://pypi.org/project/text2emotion/#description
 
-#All art by me, inspiration taken from Animal Crossing (for trees)
+#All art by me but inspiration taken from Animal Crossing (for trees)
 #######################################
 
 class Sound(object):
@@ -80,7 +75,7 @@ def appStarted(app):
     #START SCREEN VARIABLES 
     app.startLoc = (300, 550)
     app.helpLoc = (500, 550)
-    app.helpSprite = app.loadImage("helpSprite.png")
+    app.helpSprite = app.loadImage("art/helpSprite.png")
     app.helpSprite = app.scaleImage(app.helpSprite, 1.5)
     app.helpIcon = Icon("Help", (100, 700), app.helpSprite)
     app.isHelp = False
@@ -113,7 +108,7 @@ def appStarted(app):
     app.playerSprite = 0
     app.spriteFactor = 1.5
 
-    url = "playerFrontIdle.png"
+    url = "art/playerFrontIdle.png"
     spritestrip = app.loadImage(url)
     app.frontIdleSprite = []
     for i in range(2):
@@ -123,7 +118,7 @@ def appStarted(app):
         app.frontIdleSprite.append(sprite) #append each sprite to array
 
 
-    url = "playerFrontWalk.png"
+    url = "art/playerFrontWalk.png"
     spritestrip = app.loadImage(url)
     app.frontWalkSprite = []
     for i in range(2):
@@ -133,7 +128,7 @@ def appStarted(app):
         app.frontWalkSprite.append(sprite) #append each sprite to array
 
 
-    url = "playerLeftIdle.png"
+    url = "art/playerLeftIdle.png"
     spritestrip = app.loadImage(url)
     app.leftIdleSprite = []
     for i in range(2):
@@ -142,7 +137,7 @@ def appStarted(app):
 
         app.leftIdleSprite.append(sprite) #append each sprite to array
 
-    url = "playerLeftWalk.png"
+    url = "art/playerLeftWalk.png"
     spritestrip = app.loadImage(url)
     app.leftWalkSprite = []
     for i in range(2):
@@ -151,7 +146,7 @@ def appStarted(app):
 
         app.leftWalkSprite.append(sprite) #append each sprite to array
 
-    url = "playerBack.png"
+    url = "art/playerBack.png"
     spritestrip = app.loadImage(url)
     app.backIdleSprite = []
     app.backWalkSprite = []
@@ -163,7 +158,7 @@ def appStarted(app):
         else:
             app.backWalkSprite.append(sprite)
             
-    url = "playerRightIdle.png"
+    url = "art/playerRightIdle.png"
     spritestrip = app.loadImage(url)
     app.rightIdleSprite = []
     for i in range(2):
@@ -171,7 +166,7 @@ def appStarted(app):
         sprite = app.scaleImage(sprite, app.spriteFactor)
         app.rightIdleSprite.append(sprite) #append each sprite to array
 
-    url = "playerRightWalk.png"
+    url = "art/playerRightWalk.png"
     spritestrip = app.loadImage(url)
     app.rightWalkSprite = []
     for i in range(2):
@@ -179,7 +174,7 @@ def appStarted(app):
         sprite = app.scaleImage(sprite, app.spriteFactor)
         app.rightWalkSprite.append(sprite) #append each sprite to array
 
-    url = "player.png"
+    url = "art/player.png"
     app.playerHomeSprite = app.loadImage(url)
 
     app.playerSpriteCounter = 0
@@ -197,7 +192,6 @@ def appStarted(app):
     app.prevY = 500
     app.skyColor = ["#6197ed"]
     app.timerDelay = 300
-    app.timeSinceLastCloud = 0
     app.treeList = []
     app.behindTreeList = []
     app.frontTreeList = []
@@ -212,7 +206,7 @@ def appStarted(app):
     #this stores order in which to draw items
     app.inventoryList = []
     app.inventory = open("inventory.txt", "r")
-    url = "inventory.png"
+    url = "art/inventory.png"
     app.inventorySprite = app.loadImage(url)
     app.inventorySprite = app.scaleImage(app.inventorySprite, 3)
     app.inventoryIcon = Icon("Inventory", (700, 75), app.inventorySprite)
@@ -222,43 +216,43 @@ def appStarted(app):
     #REMINDER: have to have inventoryDict write to inventory file
 
     #INITIALIZE ITEMS (This includes recipes)
-    app.appleSprite = app.loadImage("apple.png")
+    app.appleSprite = app.loadImage("art/apple.png")
     app.appleSprite = app.scaleImage(app.appleSprite, 1)
     app.appleItem = Item("apples", (0, 0), app.appleSprite, True)
-    app.eggSprite = app.loadImage("eggs.png")
+    app.eggSprite = app.loadImage("art/eggs.png")
     app.eggSprite = app.scaleImage(app.eggSprite, 1)
     app.eggItem = Item("eggs", (0, 0), app.eggSprite, False)
-    app.flourSprite = app.loadImage("flour.png")
+    app.flourSprite = app.loadImage("art/flour.png")
     app.flourSprite = app.scaleImage(app.flourSprite, 1)
     app.flourItem = Item("flour", (0, 0), app.flourSprite, False)
-    app.peachSprite = app.loadImage("peach.png")
+    app.peachSprite = app.loadImage("art/peach.png")
     app.peachSprite = app.scaleImage(app.peachSprite, 1)
     app.peachItem = Item("peaches", (0, 0), app.peachSprite, True)
-    app.noodleSprite = app.loadImage("noodles.png")
+    app.noodleSprite = app.loadImage("art/noodles.png")
     app.noodleSprite = app.scaleImage(app.noodleSprite, 1)
     app.noodlesItem = Item("noodles", (0, 0), app.noodleSprite, False)
-    app.riceSprite = app.loadImage("rice.png")
+    app.riceSprite = app.loadImage("art/rice.png")
     app.riceSprite = app.scaleImage(app.riceSprite, 1)
     app.riceItem = Item("rice", (0, 0), app.riceSprite, False)
-    app.waterSprite = app.loadImage("water.png")
+    app.waterSprite = app.loadImage("art/water.png")
     app.waterSprite = app.scaleImage(app.waterSprite, 1)
     app.waterItem = Item("water", (0, 0), app.waterSprite, True)
-    app.tomatoSprite = app.loadImage("tomato.png")
+    app.tomatoSprite = app.loadImage("art/tomato.png")
     app.tomatoSprite = app.scaleImage(app.tomatoSprite, 1)
     app.tomatoItem = Item("tomatoes", (0, 0), app.tomatoSprite, True)
-    app.soySauceSprite = app.loadImage("soy sauce.png")
+    app.soySauceSprite = app.loadImage("art/soy sauce.png")
     app.soySauceSprite = app.scaleImage(app.soySauceSprite, 1)
     app.soySauceItem = Item("soy sauce", (0, 0), app.soySauceSprite, False)
-    app.sugarSprite = app.loadImage("sugar.png")
+    app.sugarSprite = app.loadImage("art/sugar.png")
     app.sugarSprite = app.scaleImage(app.sugarSprite, 1)
     app.sugarItem = Item("sugar", (0, 0), app.sugarSprite, False)
-    app.meatSprite = app.loadImage("meat.png")
+    app.meatSprite = app.loadImage("art/meat.png")
     app.meatSprite = app.scaleImage(app.meatSprite, 1)
     app.meatItem = Item("meat", (0, 0), app.meatSprite, False)
-    app.scallionSprite = app.loadImage("scallion.png")
+    app.scallionSprite = app.loadImage("art/scallion.png")
     app.scallionSprite = app.scaleImage(app.scallionSprite, 1)
     app.scallionItem = Item("scallion", (0, 0), app.scallionSprite, False)
-    app.fennelSprite = app.loadImage("fennel.png")
+    app.fennelSprite = app.loadImage("art/fennel.png")
     app.fennelSprite = app.scaleImage(app.fennelSprite, 1)
     app.fennelItem = Item("fennel", (0, 0), app.fennelSprite, False)
     # app.plantList = [] #this is a list of PLANTSSSS not ITEMS
@@ -288,14 +282,14 @@ def appStarted(app):
     #JOURNAL.TXT SHOULD BE EMPTY!!!
     #app.date updates with new day, write that day down
     app.journal.write(f"\n{app.month}/{app.day}\n") 
-    url = "journalopen.png"
+    url = "art/journalopen.png"
     app.journalOpenSprite = app.loadImage(url)
-    app.rightArrowSprite = app.scaleImage(app.loadImage("rightarrow.png"), 0.5)
+    app.rightArrowSprite = app.scaleImage(app.loadImage("art/rightarrow.png"), 0.5)
     app.leftArrowSprite = app.rightArrowSprite.transpose(Image.FLIP_LEFT_RIGHT)
     app.rightArrowIcon = Icon("Right Arrow", (700, 600), app.rightArrowSprite)
     app.leftArrowIcon = Icon("Left Arrow", (100, 600), app.leftArrowSprite)
 
-    url = "journalclose.png"
+    url = "art/journalclose.png"
     app.journalCloseSprite = app.loadImage(url)
     app.journalOpenSprite = app.scaleImage(app.journalOpenSprite, 1)
     app.journalIcon = Icon("Journal", (75, 75), app.journalOpenSprite)
@@ -304,27 +298,27 @@ def appStarted(app):
     app.vibe = app.feeling.read() #reads 'happy", "sad", "neutral", or "anx"
 
     #RECIPES
-    url = "tomatoandeggs.png"
+    url = "art/tomatoandeggs.png"
     app.tomatoEggSprite = app.loadImage(url)
     app.tomatoEggSprite = app.scaleImage(app.tomatoEggSprite, 2)
 
-    url = "applecake.png"
+    url = "art/applecake.png"
     app.appleCakeSprite = app.loadImage(url)
     app.appleCakeSprite = app.scaleImage(app.appleCakeSprite, 2)
 
-    url = "dumplings.png"
+    url = "art/dumplings.png"
     app.dumplingSprite = app.loadImage(url)
     app.dumplingSprite = app.scaleImage(app.dumplingSprite, 2)
 
-    url = "peachcobbler.png"
+    url = "art/peachcobbler.png"
     app.peachCobblerSprite = app.loadImage(url)
     app.peachCobblerSprite = app.scaleImage(app.peachCobblerSprite, 2)
 
-    url = "porridge.png"
+    url = "art/porridge.png"
     app.porridgeSprite = app.loadImage(url)
     app.porridgeSprite = app.scaleImage(app.porridgeSprite, 2)
 
-    app.scallionNoodlesSprite = app.loadImage("scallionnoodles.png")
+    app.scallionNoodlesSprite = app.loadImage("art/scallionnoodles.png")
     app.scallionNoodlesSprite = app.scaleImage(app.scallionNoodlesSprite, 2)
     
     #Initialize these as items as well....
@@ -349,28 +343,27 @@ def appStarted(app):
                             "scallion noodles" : app.scallionNoodlesItem}
 
 
-    url = "recipe.png"
+    url = "art/recipe.png"
     app.recipeSprite = app.loadImage(url)
-    app.hungerMeter = random.randint(50, 100)
     app.recipeList = initializeRecipeList(app)
 
-    app.recipeIconSprite = app.loadImage("recipeSprite.png")
+    app.recipeIconSprite = app.loadImage("art/recipeSprite.png")
     app.recipeIconSprite = app.scaleImage(app.recipeIconSprite, 3)
     app.recipeIcon = Icon("Recipe", (200, 75), app.recipeIconSprite)
 
 
     #HOME VARS
-    url = "room1.jpg"
+    url = "art/room1.jpg"
     room1 = app.loadImage(url)
     room1 = app.scaleImage(room1, 4)
-    url = "room2.jpg"
+    url = "art/room2.jpg"
     room2 = app.loadImage(url)
     room2 = app.scaleImage(room2, 4)
     app.homeBackground = [room1, room2]
     app.homeCounter = 0
     app.gameOver = False
-    bed1 = app.scaleImage(app.loadImage("sleep1.jpg"), 4)
-    bed2 = app.scaleImage(app.loadImage("sleep1.jpg"), 4)
+    bed1 = app.scaleImage(app.loadImage("art/sleep1.jpg"), 4)
+    bed2 = app.scaleImage(app.loadImage("art/sleep1.jpg"), 4)
     app.bedSprite = [bed1, bed2]
     app.bedSpriteCounter = 0
     app.fridgeOrder = ["eggs", "meat", "tomatoes", "water", "scallions", "fennel"]
@@ -379,7 +372,7 @@ def appStarted(app):
     app.cabinetOrder = ["flour", "rice", "sugar", "soy sauce", "noodles"]
     app.cabinetItems = [app.flourItem, app.riceItem, app.sugarItem, app.soySauceItem,
                         app.noodlesItem]
-    url = "fridge.png"
+    url = "art/fridge.png"
     spritestrip = app.loadImage(url)
     app.fridgeSprite = []
     for i in range(2):
@@ -387,7 +380,7 @@ def appStarted(app):
         sprite = app.scaleImage(sprite, 3)
         app.fridgeSprite.append(sprite) #append each sprite to array
 
-    url = "home.png"
+    url = "art/home.png"
     app.homeSprite = app.loadImage(url)
     app.homeSprite = app.scaleImage(app.homeSprite, 3)
     app.homeIcon = Icon("Home", (700, 700), app.homeSprite)
@@ -406,7 +399,7 @@ def appStarted(app):
 
     #Vars related to tree or nature stuff
     app.treeSpriteCounter = 0
-    url = "tree.png"
+    url = "art/tree.png"
     spritestrip = app.loadImage(url)
     app.treeSprite = []
     for i in range(3):
@@ -414,14 +407,14 @@ def appStarted(app):
         sprite = app.scaleImage(sprite, 0.85)
         app.treeSprite.append(sprite) #append each sprite to array
 
-    url = "appletree.png"
+    url = "art/appletree.png"
     spritestrip = app.loadImage(url)
     app.appleTreeSprite = []
     for i in range(3):
         sprite = spritestrip.crop((0, 320 * i, 320, 320 * (1 + i)))
         sprite = app.scaleImage(sprite, 0.85)
         app.appleTreeSprite.append(sprite) #append each sprite to array
-    url = "peachTree.png"
+    url = "art/peachTree.png"
     spritestrip = app.loadImage(url)
     app.peachTreeSprite = []
     for i in range(3):
@@ -430,38 +423,38 @@ def appStarted(app):
         app.peachTreeSprite.append(sprite) #append each sprite to array
 
 
-    url = "grass.png"
+    url = "art/grass.png"
     app.grassSprite = app.loadImage(url)
-    url = "neutralgrass.png"
+    url = "art/neutralgrass.png"
     app.neutralGrassSprite = app.loadImage(url)
-    url = "anxgrass.png"
+    url = "art/anxgrass.png"
     app.anxGrassSprite = app.loadImage(url)
-    url = "sadgrass.png"
+    url = "art/sadgrass.png"
     app.sadGrassSprite = app.loadImage(url)
-    app.skyBackground = app.loadImage("sky.png")
-    url = "neutralFilter.png"
+    app.skyBackground = app.loadImage("art/sky.png")
+    url = "art/neutralFilter.png"
     app.neutralFilter = app.loadImage(url)
     app.neutralFilter = app.scaleImage(app.neutralFilter, 4)
-    url = "sadFilter.png"
+    url = "art/sadFilter.png"
     app.sadFilter = app.loadImage(url)
     app.sadFilter = app.scaleImage(app.sadFilter, 4)
-    url = "happyFilter.png"
+    url = "art/happyFilter.png"
     app.happyFilter = app.loadImage(url)
     app.happyFilter = app.scaleImage(app.happyFilter, 4)
-    url = "anxFilter.png"
+    url = "art/anxFilter.png"
     app.anxFilter = app.loadImage(url)
     app.anxFilter = app.scaleImage(app.anxFilter, 4)
-    url = "overlay.png"
-    app.overlaySprite = app.loadImage(url)
-    app.overlaySprite = app.scaleImage(app.overlaySprite, 4)
-    url = "flowers1.png"
-    url2 = "flowers2.png"
+    url = "art/flowers1.png"
+    url2 = "art/flowers2.png"
     app.flowerSprite = []
     app.happyFlowerSprite = [app.loadImage(url), app.loadImage(url2)]
     app.flowerSpriteCounter = 0
-    app.sadFlowerSprite = [app.loadImage("sadflowers.png"), app.loadImage("sadflowers2.png")]
-    app.neutralFlowerSprite = [app.loadImage("neutralflowers.png"), app.loadImage("neutralflowers1.png")]
-    app.anxFlowerSprite = [app.loadImage("anxflowers.png"), app.loadImage("anxflowers2.png")]
+    app.sadFlowerSprite = [app.loadImage("art/sadflowers.png"), 
+                            app.loadImage("art/sadflowers2.png")]
+    app.neutralFlowerSprite = [app.loadImage("art/neutralflowers.png"), 
+                                app.loadImage("art/neutralflowers1.png")]
+    app.anxFlowerSprite = [app.loadImage("art/anxflowers.png"), 
+                            app.loadImage("art/anxflowers2.png")]
 
 
     #Color Variations
@@ -481,42 +474,40 @@ def appStarted(app):
     
     #SOUND VARS
     pygame.mixer.init()
-    app.sfx = []
-    app.sfx.append(Sound("pickingSound.WAV"))
-
+    app.playMusic = False
     app.sound = ""
     if (app.vibe == "happy"):
         app.vibe = app.happyColorDict
-        app.sound = Sound("summer.mp3")
+        app.sound = Sound("music/summer.mp3")
         app.timerDelay = 350
         app.flowerSprite = app.happyFlowerSprite
 
     elif (app.vibe == "sad"):
         app.vibe = app.sadColorDict
-        app.sound = Sound("acoustic dream.mp3")
+        app.sound = Sound("music/acoustic dream.mp3")
         app.timerDelay = 1200
         app.flowerSprite = app.sadFlowerSprite
 
 
     elif (app.vibe == "neutral"):
         app.vibe = app.neutralColorDict
-        app.sound = Sound("the golden hour.mp3")
+        app.sound = Sound("music/the golden hour.mp3")
         app.timerDelay = 700
         app.flowerSprite = app.neutralFlowerSprite
 
     else:
         app.vibe = app.anxColorDict
-        app.sound = Sound("the golden hour.mp3")
+        app.sound = Sound("music/acoustic dream.mp3")
         app.timerDelay = 150
         app.flowerSprite = app.anxFlowerSprite
 
 
     if (app.mode == "homeMode"):
-        app.sound = Sound("tides of summer.mp3")
+        app.sound = Sound("music/tides of summer.mp3")
 
-    app.pickingSound = pygame.mixer.Sound("pickupCoin.WAV")  
-    app.selectSound = pygame.mixer.Sound("blipSelect.WAV")  
-    app.openSound = pygame.mixer.Sound("openSound.WAV")
+    app.pickingSound = pygame.mixer.Sound("music/pickupCoin.WAV")  
+    app.selectSound = pygame.mixer.Sound("music/blipSelect.WAV")  
+    app.openSound = pygame.mixer.Sound("music/openSound.WAV")
 
     #vars related to perlin noise
     app.perlinRows = 50
@@ -546,8 +537,8 @@ def appStarted(app):
     
     gameMode_fillBoard(app, app.vibe['grass'], app.grassColorBoard)
     changeTreeList(app)
-    
-    # app.sound.start(loops = -1)
+    if (app.playMusic):
+        app.sound.start(loops = -1)
 
 class Icon():
     def __init__(self, name, loc, sprite):
@@ -582,7 +573,7 @@ class Item():
     
     def mouseClickedNear(self, other):
         x, y = self.loc
-        return (abs(other.x - x) <= 15 and abs(other.y - y) <= 15)
+        return (abs(other.x - x) <= 50 and abs(other.y - y) <= 50)
 
 class Tree():
     def __init__(self, app, row, col):
@@ -976,7 +967,8 @@ def homeMode_mousePressed(app, event):
             app.displayRecipe = False
             pygame.mixer.find_channel().play(app.selectSound)
 
-    if (app.inventoryIcon.mouseClickedNear(event)):
+    if (app.inventoryIcon.mouseClickedNear(event) and 
+        not (app.displayCabinet or app.displayFridge or app.displayStove)):
         if (app.displayInventory): #is open, so play closing sound
             pygame.mixer.find_channel().play(app.selectSound)
 
@@ -985,10 +977,18 @@ def homeMode_mousePressed(app, event):
 
         app.displayInventory = not app.displayInventory
 
+    if (app.displayInventory):
+        for item in app.inventoryList:
+            if item.mouseClickedNear(event):
+                print("clicked near", item.name)
+                if (item.eat()):
+                    item.count -= 1
+                    app.homeText = f"you ate {item.name}!"
+                    app.homeTextTimer = 3
+                else:
+                    app.homeText = f"this item cannot be eaten"
+                    app.homeTextTimer = 3
 
-    # if (350 <= event.x <= 450 and 600 <= event.y <= 750):
-    #     app.goBed = True
-    #     pygame.mixer.find_channel().play(app.openSound)
 
     if app.displayFridge:
         if (app.closeIcon.mouseClickedNear(event)):
@@ -1108,15 +1108,14 @@ def gameMode_mousePressed(app, event):
         app.playerSprite = app.scaleImage(app.playerHomeSprite, 3.7)
         app.goHome = True
         app.timerDelay = 500
-        app.sound = Sound("tides of summer.mp3")
-        # app.sound.start(loops = -1)
+        app.sound = Sound("music/tides of summer.mp3")
+        if (app.playMusic):
+            app.sound.start(loops = -1)
         app.mode = "homeMode"
     else:
         cx, cy = app.playerPos
         playerRow, playerCol = getPlayerRowCol(app, cx, cy)
         for tree in app.treeList:
-            # row, col = tree.loc
-            # if (abs(row - playerRow) <= 2 and abs(col - playerCol) <= 2 and type(tree) == FruitTree):
             if (tree.mouseClickedNear(app, event) and type(tree) == FruitTree):
                 if not (tree.fruitPicked):
                     tree.fruitPicked = True
@@ -1363,11 +1362,6 @@ def homeMode_timerFired(app):
 
 def gameMode_timerFired(app):
     moveClouds(app)
-    app.timeSinceLastCloud += 1
-    # if (app.timeSinceLastCloud >= 80):
-    #     fillPerlin(app)
-    #     app.timeSinceLastCloud = 0
-    app.hungerMeter -= 0.2
     app.playerSpriteCounter = (1 + app.playerSpriteCounter) % len(app.playerSprite)
     app.treeSpriteCounter = (1 + app.treeSpriteCounter) % len(app.treeSprite)
     app.lastPressedCounter += 1
@@ -1451,18 +1445,8 @@ def gameMode_fillBoard(app, colorBoard, grassBoard):
                     app.treeList.append(FruitTree(app, row, col, "apples", app.appleTreeSprite))
                 else:
                     app.treeList.append(FruitTree(app, row, col, "peaches", app.peachTreeSprite))
-            chance = random.randint(1, 2) #fill board w scallions and fennel
-            # if (chance == 1):
-            #     app.plantList.append(Plant(app, row, col, app.scallionSprite))
-            # else:
-            #     app.plantList.append(Plant(app, row, col, app.fennelSprite))
 
 
-
-#function that adds new pages
-def makeNewPages(app, line):
-    #to be implemented
-    pass
 
 def gameMode_moveCamera(app, dir):
     #if player is a certain amount of distance away from the screen
@@ -1589,7 +1573,6 @@ def fillPerlin(app):
             else:
                 color = "#7ab7f0"
             app.perlinColor[pX][pY] = color
-            # color = rgb_color((val, val, val))
 
 def gameMode_drawClouds(app, canvas):
     #Goes from 0 to 100
@@ -1687,8 +1670,6 @@ def homeMode_drawPlayer(app, canvas):
     canvas.create_image(x, y, image = player)
 
 
-
-
 def gameMode_drawBoard(app, canvas):
     rows, cols = len(app.board), len(app.board[0])
     for row in range(rows):
@@ -1708,7 +1689,6 @@ def gameMode_drawJournal(app, canvas):
     i = 0
     app.journal.seek(0)
     lines = app.journal.readlines()
-    # print(app.journalDict)
     #only display 40 lines at a time
     for line in app.journalDict[app.currentPage]:
         if (i >= 20): 
@@ -1747,19 +1727,9 @@ def gameMode_drawTextAndUI(app, canvas):
     canvas.create_text(app.width//2, 700, text = f"{app.text}", fill = "white",
                         font = "Fixedsys 24 bold", anchor = "s")
 
-    # hungerStart = 500
-    # canvas.create_rectangle(hungerStart, 600, hungerStart + 200, 650, fill = "black")
-    # hungerPos = hungerStart + (app.hungerMeter/100) * 200
-    # canvas.create_rectangle(hungerStart, 600, hungerPos, 650, fill = "red")
 
 
 def gameMode_drawTreesInBack(app, canvas):
-    # for plant in app.plantList: 
-    #     cx, cy = plant.getCenter(app)
-    #     if (0 <= cx <= app.width * 2 and 0 <= cy <= app.height * 2):
-    #         plant = getCachedPhotoImage(app, plant.sprite)
-    #         canvas.create_image(cx, cy - 120, image=plant)
-
     for tree in app.behindTreeList:
         row, col = tree.loc
         x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
