@@ -1,14 +1,18 @@
 from cmu_112_graphics import *
 import random
 import pygame
+import text2emotion as te
 
 '''
-to-do
-11/29 - finish UI for home, journal, inventory, recipe, inventory
-11/30 - add sound and start + end screen + maybe sleep screen, 
-        fancier lighting overlays
-12/1 - add flowers and birds, misc bug fixes (in front/ behind trees),
-        hills background
+to-do - perennial summer
+11/29 - finish UI for home, journal, inventory, recipe, inventory done
+11/30 - add sound and start + end screen + sleep screen, 
+        fancier lighting overlays (i give up on this)
+        , add flowers (done) and GRASS (to do....)
+        eat recipes
+        (i have tues 12 - 7 ish, 9 - whenever to work on this)
+12/1 - add birds, misc bug fixes (in front/ behind trees),
+        then i will be free.... so close.... yet so far
 '''
 
 #Credits: Code for drawBoard, constraintsMet, drawCell (first 10 lines)
@@ -39,7 +43,21 @@ to-do
 
 #Sound class and code from https://www.cs.cmu.edu/~112/notes/notes-animations-pa
 # rt4.html#playingSounds
+#list of fonts from https://stackoverflow.com/questions/39614027/list-available-
+# font-families-in-tkinter/47415907
+# Channels code from https://stackoverflow.com/questions/53617967/play-music-and
+# -sound-effects-on-top-of-each-other-pygame
+#Sound effects created with https://sfxr.me/
 
+#Sprite-related code (spritesheet, spritecounter, cropping) from:
+#also scaling image code and screen mode code
+#https://www.cs.cmu.edu/~112/notes/notes-animations-part4.html
+
+#Text to emotion module and code taken from
+#https://towardsdatascience.com/text2emotion-python-package-to-detect-emotions-
+# from-textual-data-b2e7b7ce1153
+
+#All art by me, inspiration taken from Animal Crossing (for trees)
 #######################################
 
 class Sound(object):
@@ -63,7 +81,15 @@ class Sound(object):
 
 #Initialize vars
 def appStarted(app):
-    app.mode = "gameMode"
+    app.mode = "startScreen"
+    #START SCREEN VARIABLES 
+    app.startLoc = (300, 550)
+    app.helpLoc = (500, 550)
+    app.helpSprite = app.loadImage("helpSprite.png")
+    app.helpSprite = app.scaleImage(app.helpSprite, 1.5)
+    app.helpIcon = Icon("Help", (100, 700), app.helpSprite)
+    app.isHelp = False
+
     #change this to any num x where x = 2^n + 1
     app.rows = 33
     app.cols = app.rows
@@ -168,34 +194,92 @@ def appStarted(app):
     app.speed = 50
     app.lives = 3
     app.score = 0
-    app.gameOver = False
     app.brdWidth = 0
     app.playerDir = ""
     app.cameraOffset = 100
-    app.boundingBoxLimit = 300
+    app.boundingBoxLimit = 200
     app.prevX = 500
     app.prevY = 500
     app.skyColor = ["#6197ed"]
-    app.timerDelay = 200
+    app.timerDelay = 150
     app.timeSinceLastCloud = 0
     app.treeList = []
     app.behindTreeList = []
     app.frontTreeList = []
-    app.font = "Forte"
+    app.font = "Fixedsys"
+    app.homeTextTimer = 3
+    app.homeText = ""
+
 
     #INVENTORY VARS
     app.displayInventory = False
-    app.inventoryDict = dict()
     app.inventoryGrid = [[0] * 7 for row in range(7)]
-    app.inventoryOrder = []
+    #this stores order in which to draw items
+    app.inventoryList = []
     app.inventory = open("inventory.txt", "r")
     url = "inventory.png"
     app.inventorySprite = app.loadImage(url)
     app.inventorySprite = app.scaleImage(app.inventorySprite, 3)
+    app.inventoryIcon = Icon("Inventory", (700, 75), app.inventorySprite)
 
     fillInventory(app) #fill inventory across days
     app.inventory.close()
     #REMINDER: have to have inventoryDict write to inventory file
+
+    #INITIALIZE ITEMS (This includes recipes)
+    url = "apple.png"
+    app.appleSprite = app.loadImage(url)
+    app.appleSprite = app.scaleImage(app.appleSprite, 1)
+    app.appleItem = Item("apples", (0, 0), app.appleSprite)
+    url = "eggs.png"
+    app.eggSprite = app.loadImage(url)
+    app.eggSprite = app.scaleImage(app.eggSprite, 1)
+    app.eggItem = Item("eggs", (0, 0), app.eggSprite)
+    url = "flour.png"
+    app.flourSprite = app.loadImage(url)
+    app.flourSprite = app.scaleImage(app.flourSprite, 1)
+    app.flourItem = Item("flour", (0, 0), app.flourSprite)
+    url = "peach.png"
+    app.peachSprite = app.loadImage(url)
+    app.peachSprite = app.scaleImage(app.peachSprite, 1)
+    app.peachItem = Item("peaches", (0, 0), app.peachSprite)
+    url = "noodles.png"
+    app.noodleSprite = app.loadImage(url)
+    app.noodleSprite = app.scaleImage(app.noodleSprite, 1)
+    app.noodlesItem = Item("noodles", (0, 0), app.noodleSprite)
+    url = "rice.png"
+    app.riceSprite = app.loadImage(url)
+    app.riceSprite = app.scaleImage(app.riceSprite, 1)
+    app.riceItem = Item("rice", (0, 0), app.riceSprite)
+    url = "water.png"
+    app.waterSprite = app.loadImage(url)
+    app.waterSprite = app.scaleImage(app.waterSprite, 1)
+    app.waterItem = Item("water", (0, 0), app.waterSprite)
+    url = "tomato.png"
+    app.tomatoSprite = app.loadImage(url)
+    app.tomatoSprite = app.scaleImage(app.tomatoSprite, 1)
+    app.tomatoItem = Item("tomatoes", (0, 0), app.tomatoSprite)
+    url = "soy sauce.png"
+    app.soySauceSprite = app.loadImage(url)
+    app.soySauceSprite = app.scaleImage(app.soySauceSprite, 1)
+    app.soySauceItem = Item("soy sauce", (0, 0), app.soySauceSprite)
+    url = "sugar.png"
+    app.sugarSprite = app.loadImage(url)
+    app.sugarSprite = app.scaleImage(app.sugarSprite, 1)
+    app.sugarItem = Item("sugar", (0, 0), app.sugarSprite)
+    url = "meat.png"
+    app.meatSprite = app.loadImage(url)
+    app.meatSprite = app.scaleImage(app.meatSprite, 1)
+    app.meatItem = Item("meat", (0, 0), app.meatSprite)
+    url = "scallion.png"
+    app.scallionSprite = app.loadImage(url)
+    app.scallionSprite = app.scaleImage(app.scallionSprite, 1)
+    app.scallionItem = Item("scallion", (0, 0), app.scallionSprite)
+    url = "fennel.png"
+    app.fennelSprite = app.loadImage(url)
+    app.fennelSprite = app.scaleImage(app.fennelSprite, 1)
+    app.fennelItem = Item("fennel", (0, 0), app.fennelSprite)
+    # app.plantList = [] #this is a list of PLANTSSSS not ITEMS
 
     #JOURNAL VARS
     app.journal = open("journal.txt", "a+")
@@ -209,10 +293,13 @@ def appStarted(app):
     app.displayJournal = False
     app.goHome = False
     app.goBed = False
+    app.goBedConfirm = False
     app.displayRecipe = False
     date = app.date.read()
     app.month, app.day = findDate(date)
     app.date.close()
+    if (app.day != 1):
+        app.mode = "gameMode"
     #when it starts u have to start w/ /6/1 on DATE.TXT, not JOURNAL.TXT
     #app.date updates with new day, write that day down
     app.journal.write(f"\n{app.month}/{app.day}\n") 
@@ -221,6 +308,8 @@ def appStarted(app):
     url = "journalclose.png"
     app.journalCloseSprite = app.loadImage(url)
     app.journalOpenSprite = app.scaleImage(app.journalOpenSprite, 1)
+    app.journalIcon = Icon("Journal", (75, 75), app.journalOpenSprite)
+    app.closeIcon = Icon("Close", (75, 200), app.journalCloseSprite)
 
     app.vibe = app.feeling.read() #reads 'happy", "sad", "neutral", or "anx"
 
@@ -254,28 +343,53 @@ def appStarted(app):
     url = "recipeSprite.png"
     app.recipeIconSprite = app.loadImage(url)
     app.recipeIconSprite = app.scaleImage(app.recipeIconSprite, 3)
+    app.recipeIcon = Icon("Recipe", (200, 75), app.recipeIconSprite)
 
 
     #HOME VARS
     url = "room1.jpg"
-    app.homeBackground = app.loadImage(url)
-    app.homeBackground = app.scaleImage(app.homeBackground, 4)
-    app.fridgeOrder = ["milk", "eggs", "meat", "tomatoes", "water"]
-    app.fridgeItems = initializeItems(app, app.fridgeOrder)
+    room1 = app.loadImage(url)
+    room1 = app.scaleImage(room1, 4)
+    url = "room2.jpg"
+    room2 = app.loadImage(url)
+    room2 = app.scaleImage(room2, 4)
+    app.homeBackground = [room1, room2]
+    app.homeCounter = 0
+    app.gameOver = False
+    bed1 = app.scaleImage(app.loadImage("sleep1.jpg"), 4)
+    bed2 = app.scaleImage(app.loadImage("sleep1.jpg"), 4)
+    app.bedSprite = [bed1, bed2]
+    app.bedSpriteCounter = 0
+    app.fridgeOrder = ["eggs", "meat", "tomatoes", "water", "scallions", "fennel"]
+    app.fridgeItems = [app.eggItem, app.meatItem, app.tomatoItem, app.waterItem,
+                        app.scallionItem, app.fennelItem]
     app.cabinetOrder = ["flour", "rice", "sugar", "soy sauce", "noodles"]
-    app.cabinetItems = initializeItems(app, app.cabinetOrder)
+    app.cabinetItems = [app.flourItem, app.riceItem, app.sugarItem, app.soySauceItem,
+                        app.noodlesItem]
+    url = "fridge.png"
+    spritestrip = app.loadImage(url)
+    app.fridgeSprite = []
+    for i in range(2):
+        sprite = spritestrip.crop((0, 96 * i, 96, 96 * (1 + i)))
+        sprite = app.scaleImage(sprite, 3)
+        app.fridgeSprite.append(sprite) #append each sprite to array
+
     url = "home.png"
     app.homeSprite = app.loadImage(url)
     app.homeSprite = app.scaleImage(app.homeSprite, 3)
+    app.homeIcon = Icon("Home", (700, 700), app.homeSprite)
 
     app.homeX = 0
-    app.homeCameraOffset = 40
+    app.homeCameraOffset = 120
     app.displayFridge = False
     app.displayCabinet = False
     app.displayStove = False
-    app.fridgeLoc = (700, 400)
-    app.cabinetLoc = (600, 400)
-    app.stoveLoc = (300, 400)
+    app.fridgeLoc = (350, 400)
+    app.cabinetLoc = (200, 250)
+    app.stoveLoc = (0, 400)
+    app.bedLoc = (1300, 450)
+    app.leftEndLoc = (-100, 450)
+
 
     #Vars related to tree or nature stuff
     app.treeSpriteCounter = 0
@@ -284,7 +398,7 @@ def appStarted(app):
     app.treeSprite = []
     for i in range(3):
         sprite = spritestrip.crop((0, 320 * i, 320, 320 * (1 + i)))
-        sprite = app.scaleImage(sprite, 0.9)
+        sprite = app.scaleImage(sprite, 0.7)
         app.treeSprite.append(sprite) #append each sprite to array
 
     url = "appletree.png"
@@ -292,9 +406,16 @@ def appStarted(app):
     app.appleTreeSprite = []
     for i in range(3):
         sprite = spritestrip.crop((0, 320 * i, 320, 320 * (1 + i)))
-        sprite = app.scaleImage(sprite, 0.9)
+        sprite = app.scaleImage(sprite, 0.7)
         app.appleTreeSprite.append(sprite) #append each sprite to array
-    
+    url = "peachTree.png"
+    spritestrip = app.loadImage(url)
+    app.peachTreeSprite = []
+    for i in range(3):
+        sprite = spritestrip.crop((0, 320 * i, 320, 320 * (1 + i)))
+        sprite = app.scaleImage(sprite, 0.7)
+        app.peachTreeSprite.append(sprite) #append each sprite to array
+
 
     url = "grass.png"
     app.grassSprite = app.loadImage(url)
@@ -317,24 +438,34 @@ def appStarted(app):
     url = "anxFilter.png"
     app.anxFilter = app.loadImage(url)
     app.anxFilter = app.scaleImage(app.anxFilter, 4)
+    url = "overlay.png"
+    app.overlaySprite = app.loadImage(url)
+    app.overlaySprite = app.scaleImage(app.overlaySprite, 4)
+    url = "flowers1.png"
+    url2 = "flowers2.png"
+    app.flowerSprite = [app.loadImage(url), app.loadImage(url2)]
+    app.flowerSpriteCounter = 0
 
-
-    #Color variations (for grass) to be implemented : color variations for
-    #clouds, trees, skies
+    #Color Variations
     app.happyColorDict = {'grass': ['#649e44', '#478f45', '#449642', '#298747'], 
                         'filter': app.happyFilter, "heightFac": 7, 
                         "grassSprite": app.grassSprite, 'density': 2}
     app.sadColorDict = {'grass': ['#4e6b5f', '#4e6b50', '#3e5e46', '#3f705e'], 
                         'filter': app.sadFilter, "heightFac": 1, 
                         "grassSprite": app.sadGrassSprite,  'density': 5}
-    app.neutralColorDict = {'grass': ['#e0bb55', '#cf9c30', '#b3814d', 
-                            '#d1893f'], 'filter': app.neutralFilter, 
+    app.neutralColorDict = {'grass': ['#bb9429', '#cf9c30', '#d4934d', 
+                            '#d4ad48'], 'filter': app.neutralFilter, 
                             "heightFac": 5, 
                             "grassSprite": app.neutralGrassSprite, 'density': 1}
-    app.anxColorDict = {'grass': ['#b56635', '#b54835', '#ad6b5f', '#c26936'], 
+    app.anxColorDict = {'grass': ['#cb5f4c', '#b54835', '#b96c46', '#c26936'], 
                         'filter': app.anxFilter, "heightFac": 20,
                         "grassSprite": app.anxGrassSprite, 'density': 10}
+    
+    #SOUND VARS
     pygame.mixer.init()
+    app.sfx = []
+    app.sfx.append(Sound("pickingSound.WAV"))
+
     app.sound = ""
     if (app.vibe == "happy"):
         app.vibe = app.happyColorDict
@@ -354,6 +485,9 @@ def appStarted(app):
     if (app.mode == "homeMode"):
         app.sound = Sound("tides of summer.mp3")
 
+    app.pickingSound = pygame.mixer.Sound("pickupCoin.WAV")  
+    app.selectSound = pygame.mixer.Sound("blipSelect.WAV")  
+    app.openSound = pygame.mixer.Sound("openSound.WAV")
 
     #vars related to perlin noise
     app.perlinRows = 50
@@ -386,6 +520,16 @@ def appStarted(app):
     
     # app.sound.start(loops = -1)
 
+class Icon():
+    def __init__(self, name, loc, sprite):
+        self.name = name
+        self.loc = (loc[0], loc[1])
+        self.sprite = sprite
+    
+    def mouseClickedNear(self, other):
+        x, y = self.loc
+        return (abs(other.x - x) <= 30 and abs(other.y - y) <= 30)
+
 class Recipe():
     def __init__(self, name, requiredIngredients, sprite):
         self.name = name
@@ -394,14 +538,54 @@ class Recipe():
         self.sprite = sprite
 
 class Item():
-    def __init__(self, row, col, name):
-        self.loc = (row, col)
+    def __init__(self, name, loc, sprite):
+        self.loc = loc
         self.name = name
+        self.sprite = sprite
+        self.count = 0
     
+    def mouseClickedNear(self, other):
+        x, y = self.loc
+        return (abs(other.x - x) <= 15 and abs(other.y - y) <= 15)
+
 class Tree():
     def __init__(self, app, row, col):
         self.loc = (row, col)
         self.sprite = app.treeSprite
+    
+    def mouseClickedNear(self, app):
+        row, col = self.loc
+        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
+        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+        cx, cy = gameMode_2DToIso(app, cx, cy)
+        playerX, playerY = app.playerPos
+        return (abs(playerX - cx) <= 120 and abs(playerY - cy) <= 120)
+
+    def getCenter(self, app):
+        row, col = self.loc
+        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
+        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+        cx, cy = gameMode_2DToIso(app, cx, cy)
+        return (cx, cy)
+
+
+class Plant():
+    def __init__(self, app, row, col, sprite):
+        self.loc = (row, col)
+        self.sprite = sprite
+        self.picked = False
+        self.name = ""
+        if (self.sprite == app.scallionSprite):
+            self.name = "scallions"
+        else:
+            self.name = "fennel"
+    
+    def getCenter(self, app):
+        row, col = self.loc
+        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
+        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
+        cx, cy = gameMode_2DToIso(app, cx, cy)
+        return (cx, cy)
 
 
 class AppleTree(Tree):
@@ -412,6 +596,17 @@ class AppleTree(Tree):
 
     def changeTree(self, app):
         if (self.applesPicked):
+            self.sprite = app.treeSprite
+
+class FruitTree(Tree): #apple or peach tree
+    def __init__(self, app, row, col, fruit, sprite):
+        super().__init__(app, row, col)
+        self.fruitPicked = False
+        self.sprite = sprite
+        self.fruit = fruit
+
+    def changeTree(self, app):
+        if (self.fruitPicked):
             self.sprite = app.treeSprite
 
 
@@ -628,15 +823,22 @@ def getCachedPhotoImage(app, image):
 def getPlayerRowCol(app, x, y):
     cartX, cartY = gameMode_IsoTo2D(app, x, y)
     r, c = cartY//app.cellSize, cartX//app.cellSize
-    r, c = r + 1, c + 1
+    r, c = r + 2, c + 1
     return r, c
 
 
 #returns true if player x, y is within row, col bounds
-def gameMode_constraintsMet(app, x, y):
+def homeMode_constraintsMet(app, x):
+    x, y = app.playerPos
+    return (x > app.leftEndLoc[0])
+
+def gameMode_constraintsMet(app, x, y, dir):
     row, col = getPlayerRowCol(app, x, y)
-    
-    return (1 <= row <= app.rows and 1 <= col <= app.cols)
+    print(row, col)
+    if (row == 1 and dir == "up" or (col == 1 and dir == "up")):
+        return False
+    else:
+        return (1 <= row <= app.rows and 1 <= col <= app.cols)
 
 #If player is near edge of board, run diamond square on a new board
 #and append it to old one
@@ -692,98 +894,197 @@ def gameMode_expandBoard(app):
 
 #returns true if clicked on within item bounds
 def withinRange(app, event, other):
-    return (abs(event.x - other[0]) <= 30 and abs(event.y - other[1]) <= 30)
+    return (abs(event.x - other[0]) <= 100 and abs(event.y - other[1]) <= 100)
+
+
+def startScreen_mousePressed(app, event):
+    if (withinRange(app, event, app.startLoc)):
+        app.mode = "gameMode"
+        app.prevMode = "gameMode"
+        pygame.mixer.find_channel().play(app.openSound)
+    elif (withinRange(app, event, app.helpLoc)):
+        app.isHelp = True
+        pygame.mixer.find_channel().play(app.openSound)
+    if (app.closeIcon.mouseClickedNear(event)):
+        app.isHelp = False
+        pygame.mixer.find_channel().play(app.selectSound)
+
 
 def homeMode_mousePressed(app, event):
-    #open cabinet - stores flour, salt, sugar
-    #open fridge - stores egg, milk
-    #cook things in oven
-    if (withinRange(app, event, app.stoveLoc)):
-        app.displayStove = True
-    if (withinRange(app, event, app.fridgeLoc)):
-        app.displayFridge = True
-    if (withinRange(app, event, app.cabinetLoc)):
-        app.displayCabinet = True
-    
-    if (100 <= event.x <= 200 and 0 <= event.y <= 100):
-        app.displayRecipe = not app.displayRecipe
-
-    if (650 <= event.x <= 750 and 0 <= event.y <= 100):
-        app.displayInventory = not app.displayInventory\
-
-    if (350 <= event.x <= 450 and 600 <= event.y <= 750):
-        app.goBed = True
-
-    if app.displayFridge:
-        if (50 <= event.x <= 150 and 150 <= event.y <= 250):
-            app.displayFridge = False
-        for item in app.fridgeItems:
-            if withinRange(app, event, item.loc):
-                app.inventoryDict[item.name] = app.inventoryDict.get(item.name, 0) + 1
-                if (item.name not in app.inventoryOrder):
-                    app.inventoryOrder.append(item.name)
-
-    if app.displayCabinet:
-        if (50 <= event.x <= 150 and 150 <= event.y <= 250):
-            app.displayCabinet = False
-        for item in app.cabinetItems:
-            if withinRange(app, event, item.loc):
-                app.inventoryDict[item.name] = app.inventoryDict.get(item.name, 0) + 1
-                if (item.name not in app.inventoryOrder):
-                    app.inventoryOrder.append(item.name)
-
-    if app.displayStove:
-        if (50 <= event.x <= 150 and 150 <= event.y <= 250):
-            app.displayStove = False
-        canCook = True
-        for recipe in app.recipeList:
-            if withinRange(app, event, recipe.loc):
-                recipeDict = recipe.ingredients
-                for ingredient in recipeDict:
-                    if ingredient not in app.inventoryDict or app.inventoryDict[ingredient] < recipeDict[ingredient]:
-                        print("insufficient ingredients")
-                        canCook = False
-                if (canCook):
-                    for ingredient in recipeDict:
-                        app.inventoryDict[ingredient] -= recipeDict[ingredient]
-                        #remove used ingredients
-                    print("cooked recipe")
-                    app.inventoryDict[recipe.name] = app.inventoryDict.get(recipe.name, 0) + 1
-                    app.inventoryOrder.append(recipe.name)
-
-def gameMode_mousePressed(app, event):
     if (app.displayJournal):
-        if (50 <= event.x <= 150 and 150 <= event.y <= 250):
+        if (app.closeIcon.mouseClickedNear(event)):
             app.displayJournal = False
+            pygame.mixer.find_channel().play(app.selectSound)
             #once done with reading journal, change into writing mode
             app.journal = open("journal.txt", "a+")
-    elif (0 <= event.x <= 100 and 0 <= event.y <= 100):
+    elif (app.journalIcon.mouseClickedNear(event)):
+        pygame.mixer.find_channel().play(app.openSound)
         app.displayJournal = True 
         if (app. displayJournal):
             app.journal.close()
             #change it into reading mode to display text
             app.journal = open("journal.txt", "r")
-    elif (150 <= event.x <= 200 and 0 <= event.y <= 100):
+    if (withinRange(app, event, app.stoveLoc)):
+        app.displayStove = True
+        pygame.mixer.find_channel().play(app.openSound)
+    if (withinRange(app, event, app.fridgeLoc) and not app.displayCabinet):
+        app.displayFridge = True
+        pygame.mixer.find_channel().play(app.openSound)
+    if (withinRange(app, event, app.cabinetLoc) and not app.displayFridge):
+        app.displayCabinet = True
+        pygame.mixer.find_channel().play(app.openSound)
+
+    if (app.recipeIcon.mouseClickedNear(event)):
         app.displayRecipe = True
+        pygame.mixer.find_channel().play(app.openSound)
+
     elif (app.displayRecipe):
-        if (50 <= event.x <= 150 and 150 <= event.y <= 250):
+        if (app.closeIcon.mouseClickedNear(event)):
             app.displayRecipe = False
-    elif (650 <= event.x <= 750 and 0 <= event.y <= 100):
+            pygame.mixer.find_channel().play(app.selectSound)
+
+    if (app.inventoryIcon.mouseClickedNear(event)):
+        if (app.displayInventory): #is open, so play closing sound
+            pygame.mixer.find_channel().play(app.selectSound)
+
+        else:
+            pygame.mixer.find_channel().play(app.openSound)
+
         app.displayInventory = not app.displayInventory
+
+
+    # if (350 <= event.x <= 450 and 600 <= event.y <= 750):
+    #     app.goBed = True
+    #     pygame.mixer.find_channel().play(app.openSound)
+
+    if app.displayFridge:
+        if (app.closeIcon.mouseClickedNear(event)):
+            app.displayFridge = False
+            pygame.mixer.find_channel().play(app.selectSound)
+        for item in app.fridgeItems:
+            if item.mouseClickedNear(event):
+                if (item not in app.inventoryList):
+                    app.inventoryList.append(item)
+                app.homeText = f"{item.name} + 1"
+                app.homeTextTimer = 3
+                item.count += 1
+                pygame.mixer.find_channel().play(app.openSound)
+
+    if app.displayCabinet:
+        if (app.closeIcon.mouseClickedNear(event)):
+            app.displayCabinet = False
+            pygame.mixer.find_channel().play(app.selectSound)
+        for item in app.cabinetItems:
+            if item.mouseClickedNear(event):
+                if (item not in app.inventoryList):
+                    app.inventoryList.append(item)
+                app.homeText = f"{item.name} + 1"
+                app.homeTextTimer = 3
+                item.count += 1
+                pygame.mixer.find_channel().play(app.openSound)
+
+    if app.displayStove:
+        if (app.closeIcon.mouseClickedNear(event)):
+            app.displayStove = False
+            pygame.mixer.find_channel().play(app.selectSound)
+        canCook = True
+        #app.recipeList is recipe items... i think
+        for recipe in app.recipeList:
+            if withinRange(app, event, recipe.loc):
+                #ex tomato and eggs has {tomato : 3, eggs : 2, etc.}
+                recipeDict = recipe.ingredients
+                curIngredientCount = 0
+                for ingredient in recipeDict: 
+                    for item in app.inventoryList:
+                        if (ingredient == item.name and item.count >= recipeDict[ingredient]):
+                            curIngredientCount += 1
+                #check if cancook, ex. if player has 3 tomatoes and 2 eggs
+                if (curIngredientCount != len(recipeDict)):
+                    canCook = False
+                    print('insufficient ingredients')
+                    app.homeText = "insufficient ingredients!"
+                    pygame.mixer.find_channel().play(app.selectSound)
+                    app.homeTextTimer = 3
+                if (canCook):
+                    for ingredient in recipeDict: 
+                        for item in app.inventoryList:
+                            if (ingredient == item.name):
+                                item.count -= recipeDict[ingredient]
+                        #remove used ingredients
+                    print("cooked recipe")
+                    app.homeText = f"cooked {recipe.name}!"
+                    pygame.mixer.find_channel().play(app.openSound)
+                    app.homeTextTimer = 3
+                    app.inventoryList.append(recipe)
+
+def gameMode_mousePressed(app, event):
+    if (app.displayJournal):
+        if (app.closeIcon.mouseClickedNear(event)):
+            app.displayJournal = False
+            #once done with reading journal, change into writing mode
+            app.journal = open("journal.txt", "a+")
+        pygame.mixer.find_channel().play(app.selectSound)
+    elif (app.journalIcon.mouseClickedNear(event)):
+        app.displayJournal = True 
+        if (app. displayJournal):
+            app.journal.close()
+            #change it into reading mode to display text
+            app.journal = open("journal.txt", "r")
+        pygame.mixer.find_channel().play(app.openSound)
+    elif (app.recipeIcon.mouseClickedNear(event)):
+        app.displayRecipe = True
+        pygame.mixer.find_channel().play(app.openSound)
+    elif (app.displayRecipe):
+        if (app.closeIcon.mouseClickedNear(event)):
+            app.displayRecipe = False
+        pygame.mixer.find_channel().play(app.selectSound)
+    elif (app.inventoryIcon.mouseClickedNear(event)):
+        if (app.displayInventory): #is open, so play closing sound
+            pygame.mixer.find_channel().play(app.selectSound)
+        else:
+            pygame.mixer.find_channel().play(app.openSound)
+        app.displayInventory = not app.displayInventory
+    elif (app.helpIcon.mouseClickedNear(event)):
+        app.isHelp = True
+        pygame.mixer.find_channel().play(app.selectSound)
+    elif (app.isHelp):
+        if (app.closeIcon.mouseClickedNear(event)):
+            app.isHelp = False
+    elif (app.homeIcon.mouseClickedNear(event)):
+        pygame.mixer.find_channel().play(app.openSound)
+        app.text = ""
+        app.playerPos = (400, 450)
+        # update vars for home
+        app.playerSprite = app.scaleImage(app.playerHomeSprite, 3.7)
+        app.goHome = True
+        app.timerDelay = 500
+        app.sound = Sound("tides of summer.mp3")
+        # app.sound.start(loops = -1)
+        app.mode = "homeMode"
     else:
         cx, cy = app.playerPos
         playerRow, playerCol = getPlayerRowCol(app, cx, cy)
         for tree in app.treeList:
-            row, col = tree.loc
-            if (abs(row - playerRow) <= 2 and abs(col - playerCol) <= 2 and type(tree) == AppleTree):
-                if not (tree.applesPicked):
-                    tree.applesPicked = True
+            # row, col = tree.loc
+            # if (abs(row - playerRow) <= 2 and abs(col - playerCol) <= 2 and type(tree) == FruitTree):
+            if (tree.mouseClickedNear(app)):
+                if not (tree.fruitPicked):
+                    tree.fruitPicked = True
+                    pygame.mixer.find_channel().play(app.pickingSound)
                     tree.changeTree(app)
-                    app.inventoryDict["apples"] = app.inventoryDict.get("apples", 0) + 3
-                    if ("apples" not in app.inventoryOrder):
-                        app.inventoryOrder.append("apples")
-                    # print(tree.loc)
+                    if (tree.fruit == "apples"):
+                        app.appleItem.count += 3
+                        if (app.appleItem not in app.inventoryList):
+                            #inventoryList stores list of ITEMS not their names
+                            app.inventoryList.append(app.appleItem)
+                    else:
+                        app.peachItem.count += 3
+                        if (app.peachItem not in app.inventoryList):
+                            #inventoryList stores list of ITEMS not their names
+                            app.inventoryList.append(app.peachItem)
+
                     break   
+                    
 
 def createNewDiamondSquare(app):
     chunkSize = 33
@@ -805,6 +1106,7 @@ def homeMode_moveCamera(app, dir):
             app.stoveLoc = (app.stoveLoc[0] + app.homeCameraOffset, app.stoveLoc[1])
             app.fridgeLoc = (app.fridgeLoc[0] + app.homeCameraOffset, app.fridgeLoc[1])
             app.cabinetLoc = (app.cabinetLoc[0] + app.homeCameraOffset, app.cabinetLoc[1])
+            app.bedLoc = (app.bedLoc[0] + app.homeCameraOffset, app.bedLoc[1])
 
     elif (dir == "right"):
         if (x >= app.width - app.boundingBoxLimit):
@@ -812,9 +1114,15 @@ def homeMode_moveCamera(app, dir):
             app.stoveLoc = (app.stoveLoc[0] - app.homeCameraOffset, app.stoveLoc[1])
             app.fridgeLoc = (app.fridgeLoc[0] - app.homeCameraOffset, app.fridgeLoc[1])
             app.cabinetLoc = (app.cabinetLoc[0] - app.homeCameraOffset, app.cabinetLoc[1])
+            app.bedLoc = (app.bedLoc[0] - app.homeCameraOffset, app.bedLoc[1])
 
 def homeMode_keyPressed(app, event):
     cx, cy = app.playerPos
+    if (app.goBedConfirm):
+        if (event.key == "g"):
+            app.goBed = True
+        else:
+            app.goBedConfirm = False
     if (app.goBed):
         if (event.key == "y"):
             app.goHome = False
@@ -832,6 +1140,8 @@ def homeMode_keyPressed(app, event):
             app.text = ""
             detectWords(app)
             appStarted(app)
+        elif (event.key == "n"):
+            app.gameOver = True
 
     if (event.key == 'Right'):
             app.playerPos = (cx + app.speed, cy)
@@ -857,15 +1167,6 @@ def gameMode_keyPressed(app, event):
         if (event.key == "Backspace"):
             app.text = app.text[:-1]
             app.textLenChecker -= 1
-        if (app.text.lower() == "go home"):
-            app.text = ""
-            app.playerPos = (400, 600)
-            # update vars for home
-            app.playerSprite = app.scaleImage(app.playerHomeSprite, 3.5)
-            app.goHome = True
-            app.sound = Sound("tides of summer.mp3")
-            app.sound.start(loops = -1)
-            app.mode = "homeMode"
         if (event.key == 'Enter'):
             app.journal.write(app.text + "\n")
             app.text = ""
@@ -873,22 +1174,22 @@ def gameMode_keyPressed(app, event):
 
     #Player movement
     if (event.key == 'Up'):
-        if gameMode_constraintsMet(app, cx, cy - app.speed):
+        if gameMode_constraintsMet(app, cx, cy - app.speed, "up"):
             app.playerPos = (cx, cy - app.speed)
             app.playerSprite = app.backWalkSprite
             gameMode_moveCamera(app, "up")
     elif (event.key == 'Down'):
-        if gameMode_constraintsMet(app, cx, cy + app.speed):
+        if gameMode_constraintsMet(app, cx, cy + app.speed, "down"):
             app.playerPos = (cx, cy + app.speed)
             app.playerSprite = app.frontWalkSprite
             gameMode_moveCamera(app, "down")
     elif (event.key == 'Right'):
-        if gameMode_constraintsMet(app, cx + app.speed, cy):
+        if gameMode_constraintsMet(app, cx + app.speed, cy, "right"):
             app.playerPos = (cx + app.speed, cy)
             app.playerSprite = app.rightWalkSprite
             gameMode_moveCamera(app, "right")
     elif (event.key == 'Left'):
-        if gameMode_constraintsMet(app, cx - app.speed, cy):
+        if gameMode_constraintsMet(app, cx - app.speed, cy, "left"):
             app.playerPos = (cx - app.speed, cy)
             app.playerSprite = app.leftWalkSprite
             gameMode_moveCamera(app, "left")
@@ -946,7 +1247,7 @@ def initializeRecipeList(app):
     newL = []
     newL.append(Recipe("tomato and eggs", {"tomatoes" : 2, "eggs" : 3, "rice": 1},
                         app.tomatoEggSprite))
-    newL.append(Recipe("meat and fennel dumplings", {"meat" : 2, "fennel" : 3, "flour" : 2},
+    newL.append(Recipe("fennel dumplings", {"meat" : 2, "fennel" : 3, "flour" : 2},
                         app.dumplingSprite))
     newL.append(Recipe("porridge", {"rice" : 3, "water" : 3, "eggs" : 2, "scallions" : 2},
                         app.porridgeSprite))
@@ -974,19 +1275,31 @@ def changeTreeList(app):
     playerX, playerY = app.playerPos
     for i in range(len(app.treeList)):
         tree = app.treeList[i]
-        row, col = tree.loc
-        x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
-        cx, cy = (x1 + x0)/2, (y1 + y0)/2 #get center
-        cx, cy = gameMode_2DToIso(app, cx, cy)
-        cy -= 120
-        if (cy <= playerY + 42): #tree is behind player
+        cx, cy = tree.getCenter(app)
+        if (cy <= playerY - 42): #tree is behind player
             app.behindTreeList.append(tree)
             if (tree in app.frontTreeList):
                 app.frontTreeList.remove(tree)
-        elif (cy >= playerY - 42): #tree is in front of player
+        elif (cy >= playerY + 42): #tree is in front of player
             app.frontTreeList.append(tree)
             if (tree in app.behindTreeList):
                 app.behindTreeList.remove(tree)
+
+def homeMode_timerFired(app):
+    x, y = app.playerPos
+    if (x >= app.bedLoc[0]):
+        app.goBedConfirm = True
+    if app.homeCounter == 1:
+        app.homeCounter = 0
+    else:
+        app.homeCounter = 1
+    app.homeTextTimer -= 1
+    if (app.homeTextTimer == 0): #messages stay for 3 * app.timerDelay secs
+        app.homeTextTimer = 0
+    if app.bedSpriteCounter == 1:
+        app.bedSpriteCounter = 0
+    else:
+        app.bedSpriteCounter = 1
 
 def gameMode_timerFired(app):
     moveClouds(app)
@@ -1008,6 +1321,11 @@ def gameMode_timerFired(app):
         elif (app.lastPressedKey == 'Left'):
             app.playerSprite = app.leftIdleSprite   
         app.lastPressedCounter = 0
+    if app.flowerSpriteCounter == 1:
+        app.flowerSpriteCounter = 0
+    else:
+        app.flowerSpriteCounter = 1
+
 #---------------------------------------
 # JOURNAL FUNCTIONS
 # --------------------------------------
@@ -1054,11 +1372,20 @@ def gameMode_fillBoard(app, colorBoard, grassBoard):
                 if (tree.loc == (row, col)):
                     break
             if (grassBoard[row][col] == colorBoard[2]):
-                chance = random.randint(1, 2)
+                chance = random.randint(1, 4)
                 if (chance == 1):
                     app.treeList.append(Tree(app, row, col))
+                elif (chance == 2):
+                    app.treeList.append(FruitTree(app, row, col, "apples", app.appleTreeSprite))
                 else:
-                    app.treeList.append(AppleTree(app, row, col))
+                    app.treeList.append(FruitTree(app, row, col, "peaches", app.peachTreeSprite))
+            chance = random.randint(1, 2) #fill board w scallions and fennel
+            # if (chance == 1):
+            #     app.plantList.append(Plant(app, row, col, app.scallionSprite))
+            # else:
+            #     app.plantList.append(Plant(app, row, col, app.fennelSprite))
+
+
 
 #function that adds new pages
 def makeNewPages(app, line):
@@ -1071,15 +1398,21 @@ def gameMode_moveCamera(app, dir):
     if (dir == "left"):
         if (x <= app.boundingBoxLimit):
             app.prevX -= app.cameraOffset
+            app.playerPos = (x + app.cameraOffset, y)
     elif (dir == "right"):
         if (x >= app.width - app.boundingBoxLimit):
             app.prevX += app.cameraOffset
+            app.playerPos = (x - app.cameraOffset, y)
     elif (dir == "up"):
         if (y <= app.boundingBoxLimit):
             app.prevY -= app.cameraOffset
+            app.playerPos = (x, y + app.cameraOffset)
+
     elif (dir == "down"): 
         if (y >= app.height - app.boundingBoxLimit):
             app.prevY += app.cameraOffset
+            app.playerPos = (x, y - app.cameraOffset)
+
 
 #---------------------------------------
 # DRAW FUNCTIONS
@@ -1143,9 +1476,12 @@ def gameMode_drawCell(app, canvas, row, col, color):
         if (color == colorList[1]):
             grass = app.vibe["grassSprite"]
             grass = getCachedPhotoImage(app, grass)
+            canvas.create_image(cx, cy, image=grass)
+        elif (color == colorList[3]):
+            grass = app.flowerSprite[app.flowerSpriteCounter]
+            grass = getCachedPhotoImage(app, grass)
             canvas.create_image(cx, cy - yOffsetTopL, image=grass)
         
-
 
 def fillPerlin(app):
     for pX in range(0, app.newPerlinLength):
@@ -1195,6 +1531,10 @@ def gameMode_drawClouds(app, canvas):
                                     pX * offset + offset, pY * offset + offset, 
                                     fill = color, width = 0)
 
+def homeMode_drawEndScreen(app, canvas):
+    canvas.create_rectangle(0, 0, app.width, app.height, fill = "black")
+    canvas.create_text(app.width//2, app.height//2, text = "thank you for playing!",
+                        font = f"{app.font} 24 bold", fill = "white")
 def gameMode_drawRecipeBook(app, canvas):
     filter = app.sadFilter
     filter = getCachedPhotoImage(app, filter)
@@ -1202,37 +1542,47 @@ def gameMode_drawRecipeBook(app, canvas):
     recipeBook = getCachedPhotoImage(app, app.recipeSprite)
     canvas.create_image(app.width//2, app.height//2, image = recipeBook)
     i = 0
-    startX = 200
-    xOffset = 400
+    canvas.create_text(200, 175 , text = "recipes", font= f"{app.font} 24 bold",
+                        anchor = "n")
+    startX = 180
+    startY = 230
+    xOffset = 300
     for recipe in app.recipeList:
         if (i >= 12):
             #draw on other half of screen
-            canvas.create_text(startX + xOffset, startX + (i - 12) * 30, text = recipe.name, 
+            canvas.create_text(startX + xOffset, startY + (i - 12) * 30, text = recipe.name, 
                 font = f"{app.font} 12 bold")
+            recipe.loc = (startX + xOffset, startY + (i - 12) * 30)
             img = getCachedPhotoImage(app, recipe.sprite)
-            canvas.create_image(startX + xOffset + 100, startX + (i - 12) * 30, image=img)
-            for item in recipe.ingredients:
+            canvas.create_image(startX + xOffset + 100, startY + (i - 12) * 30, image=img)
+            for item in recipe.ingredients: #draw ingredients
                 i += 1
-                canvas.create_text(startX + xOffset, startX + (i - 12) * 30, text = f"{item} : {recipe.ingredients[item]}",
-                font = f"{app.font} 12 bold")
+                canvas.create_text(startX + xOffset, startY + (i - 12) * 30, text = f"{item} : {recipe.ingredients[item]}",
+                font = f"{app.font} 12")
             i += 1
         else: 
             #draw on first half of screen
-            canvas.create_text(startX, startX + i * 30, text = recipe.name, 
+            canvas.create_text(startX, startY + i * 30, text = recipe.name, 
                 font = f"{app.font} 12 bold")
             img = getCachedPhotoImage(app, recipe.sprite)
-            canvas.create_image(startX + 100, startX + i * 30, image=img)
+            canvas.create_image(startX + 140, startY + i * 30, image=img)
+            recipe.loc = (startX, startY + i * 30)
             for item in recipe.ingredients:
                 i += 1
-                canvas.create_text(startX, startX + i * 30, text = f"{item} : {recipe.ingredients[item]}",
-                font = f"{app.font} 12 bold")
+                canvas.create_text(startX, startY + i * 30, text = f"{item} : {recipe.ingredients[item]}",
+                font = f"{app.font} 12")
             i += 1
     journalClose = getCachedPhotoImage(app, app.journalCloseSprite)
-    canvas.create_image(100, 200, image=journalClose)
+    canvas.create_image(75, 200, image=journalClose)
 
 
 def gameMode_drawInventory(app, canvas):
     rows, cols = len(app.inventoryGrid), len(app.inventoryGrid[0])
+    filter = app.sadFilter
+    filter = getCachedPhotoImage(app, filter)
+    canvas.create_image(400, 400, image= filter)
+    iconBg = app.scaleImage(app.sadFilter, 1/8)
+    iconBg = getCachedPhotoImage(app, iconBg)
     inventoryIndex = 0
     for row in range(rows):
         for col in range(cols):
@@ -1241,11 +1591,18 @@ def gameMode_drawInventory(app, canvas):
             y0 = row * 100 + app.margin
             y1 = (row + 1) * 100 + app.margin
             if (2 <= row <= 5 and 2 <= col <= 5):
-                canvas.create_rectangle(x0, y0, x1, y1, fill = "white")
-                if (inventoryIndex < len(app.inventoryOrder)):
-                    item = app.inventoryOrder[inventoryIndex]
-                    canvas.create_text(x0, y0, text = f"{item} : {app.inventoryDict[item]}")
+                canvas.create_image((x0 + x1)/2, (y0 + y1)/2, image = iconBg)
+                if (inventoryIndex < len(app.inventoryList)):
+                    item = app.inventoryList[inventoryIndex]
+                    sprite = item.sprite
+                    sprite = getCachedPhotoImage(app, sprite)
+                    canvas.create_image((x0 + x1)/2, (y0 + y1)/2, image= sprite)
+                    canvas.create_text((x0 + x1)/2, y0, text = f"{item.name} : {item.count}",
+                                        font = f"{app.font} 10", anchor = "n")
                     inventoryIndex += 1
+    canvas.create_text(250, 150, text = "inventory",
+                    font = f"{app.font} 14 bold", anchor = "n", fill = "black")
+
 
 def gameMode_drawPlayer(app, canvas):
     x, y = app.playerPos
@@ -1270,40 +1627,42 @@ def gameMode_drawJournal(app, canvas):
     filter = app.sadFilter
     filter = getCachedPhotoImage(app, filter)
     canvas.create_image(400, 400, image= filter)
-    canvas.create_rectangle(50, 150, 750, 700, fill = "#f5eace")
-    canvas.create_text(400, 220, text = "journal", 
+    recipeBook = getCachedPhotoImage(app, app.recipeSprite)
+    canvas.create_image(app.width//2, app.height//2, image = recipeBook)
+    canvas.create_text(200, 220, text = "journal", 
                         font = f"{app.font} 24 bold", anchor = "s")
     i = 0
     app.journal.seek(0)
     lines = app.journal.readlines()
     for line in lines:
-        if (i >= 25): 
+        if (i >= 20): 
             #put on next half of page
-            canvas.create_text (600, 250 + (i - 25) * 20, text = line, 
-            font = f"{app.font} 12 bold")
+            canvas.create_text (600, 250 + (i - 20) * 20, text = line, 
+            font = f"{app.font} 12")
         else:
-            canvas.create_text (200, 250 + i * 20, text = line, 
-            font = f"{app.font} 12 bold")
+            canvas.create_text (200, 230 + i * 20, text = line, 
+            font = f"{app.font} 12")
         i += 1
 
     journalClose = getCachedPhotoImage(app, app.journalCloseSprite)
-    canvas.create_image(100, 200, image=journalClose)
+    canvas.create_image(75, 200, image=journalClose)
 
 def gameMode_drawTextAndUI(app, canvas):
     filter = app.vibe["filter"]
     filter = getCachedPhotoImage(app, filter)
     canvas.create_image(400, 400, image= filter)
-    journalOpen = getCachedPhotoImage(app, app.journalOpenSprite)
-    canvas.create_image(75, 75, image=journalOpen)
+    journalOpen = getCachedPhotoImage(app, app.journalIcon.sprite)
+    canvas.create_image(app.journalIcon.loc[0], app.journalIcon.loc[1], image=journalOpen)
+    homeIc = getCachedPhotoImage(app, app.homeIcon.sprite)
+    canvas.create_image(app.homeIcon.loc[0], app.homeIcon.loc[1], image= homeIc)
+    inventoryIc = getCachedPhotoImage(app, app.inventoryIcon.sprite)
+    canvas.create_image(app.inventoryIcon.loc[0], app.inventoryIcon.loc[1], image= inventoryIc)
+    recipeIc = getCachedPhotoImage(app, app.recipeIcon.sprite)
+    canvas.create_image(app.recipeIcon.loc[0], app.recipeIcon.loc[1], image= recipeIc)
+    helpIc = getCachedPhotoImage(app, app.helpIcon.sprite)
+    canvas.create_image(app.helpIcon.loc[0], app.helpIcon.loc[1], image= helpIc)
     canvas.create_text(app.width//2, 700, text = f"{app.text}", fill = "white",
                         font = "Courier 24 bold", anchor = "s")
-    recipeIcon = getCachedPhotoImage(app, app.recipeIconSprite)
-    homeIcon = getCachedPhotoImage(app, app.homeSprite)
-    inventoryIcon = getCachedPhotoImage(app, app.inventorySprite)
-
-    canvas.create_image(200, 75, image=recipeIcon)
-    canvas.create_image(700, 75, image=inventoryIcon)
-    canvas.create_image(700, 700, image=homeIcon)
 
     # hungerStart = 500
     # canvas.create_rectangle(hungerStart, 600, hungerStart + 200, 650, fill = "black")
@@ -1312,6 +1671,12 @@ def gameMode_drawTextAndUI(app, canvas):
 
 
 def gameMode_drawTreesInBack(app, canvas):
+    # for plant in app.plantList: 
+    #     cx, cy = plant.getCenter(app)
+    #     if (0 <= cx <= app.width * 2 and 0 <= cy <= app.height * 2):
+    #         plant = getCachedPhotoImage(app, plant.sprite)
+    #         canvas.create_image(cx, cy - 120, image=plant)
+
     for tree in app.behindTreeList:
         row, col = tree.loc
         x0, y0, x1, y1 = getCellBoundsinCartesianCoords(app, row, col)
@@ -1320,6 +1685,7 @@ def gameMode_drawTreesInBack(app, canvas):
         if (0 <= cx <= app.width * 2 and 0 <= cy <= app.height * 2):
             tree = getCachedPhotoImage(app, tree.sprite[app.treeSpriteCounter])
             canvas.create_image(cx, cy - 120, image=tree)
+    
 
 
 def gameMode_drawTreesInFront(app, canvas):
@@ -1338,57 +1704,93 @@ def gameMode_drawBackground(app, canvas):
 
 def homeMode_drawHome(app, canvas):
     canvas.create_rectangle(0, 0, app.height, app.width, fill = "black")
-    home = getCachedPhotoImage(app, app.homeBackground)
+    home = getCachedPhotoImage(app, app.homeBackground[app.homeCounter])
     canvas.create_image(400 - app.homeX, 400, image = home)
-    x, y = app.stoveLoc
-    canvas.create_rectangle(x - 50, y - 50, x + 50, y + 50, fill = "grey")
-    x, y = app.fridgeLoc
+    x, y = app.bedLoc
     canvas.create_rectangle(x - 50, y - 50, x + 50, y + 50, fill = "white")
-    x, y = app.cabinetLoc
-    canvas.create_rectangle(x - 50, y - 50, x + 50, y + 50, fill = "brown")
+
+
+def homeMode_drawText(app, canvas):
+    canvas.create_text(app.width//2, 150, text = f"{app.homeText}", 
+                        font = f"{app.font} 12 bold", fill = "white")
 
 def homeMode_drawBed(app, canvas):
     canvas.create_rectangle(0, 0, app.height, app.width, fill = "black")
-    canvas.create_text(app.width/2, app.height/2, 
+    bed = getCachedPhotoImage(app, app.bedSprite[app.bedSpriteCounter])
+    canvas.create_image(400, 400, image = bed)
+
+    canvas.create_text(app.width/2, app.height/2 + 200, 
                         text = "you went to bed for the day", 
-                        fill = "white")
-    canvas.create_text(app.width/2, app.height/2 + 20, 
+                        fill = "white", font = f"{app.font} 18")
+    canvas.create_text(app.width/2, app.height/2 + 250, 
                         text = "go out again the next morning? (y/n)",
-                        fill = "white")
+                        fill = "white", font = f"{app.font} 18")
 
 def homeMode_drawStove(app, canvas):
-    recipeBook = getCachedPhotoImage(app, app.recipeSprite)
-    canvas.create_image(app.width//2, app.height//2, image = recipeBook)
-    i = 0
-    for recipe in app.recipeList:
-        canvas.create_text(200, 200 + i * 50, text = recipe.name)
-        canvas.create_text(400, 200 + i * 50, text = recipe.ingredients)
-        recipe.loc = (200, (200 + i * 50))
-        i += 1
-    journalClose = getCachedPhotoImage(app, app.journalCloseSprite)
-    canvas.create_image(100, 200, image=journalClose)
+    gameMode_drawRecipeBook(app, canvas)
+    canvas.create_text(600, 200, text = "time to cook!", font = f"{app.font} 18 bold")
 
 def homeMode_drawCabinet(app, canvas):
-    recipeBook = getCachedPhotoImage(app, app.recipeSprite)
-    canvas.create_image(app.width//2, app.height//2, image = recipeBook)
-    for i in range(len(app.cabinetItems)):
-        item = app.cabinetItems[i]
-        canvas.create_text(200, 200 + i * 50, text = item.name)
-        item.loc = (200, 200 + i * 50)
     journalClose = getCachedPhotoImage(app, app.journalCloseSprite)
     canvas.create_image(100, 200, image=journalClose)
+    rows, cols = len(app.inventoryGrid), len(app.inventoryGrid[0])
+    iconBg = app.scaleImage(app.sadFilter, 1/8)
+    iconBg = getCachedPhotoImage(app, iconBg)
+    canvas.create_text(250, 175, text = "cabinet", 
+                    font = f"{app.font} 18 bold", fill = "white")
+    cabinetIndex = 0
+    for row in range(rows):
+        for col in range(cols):
+            x0 = col * 100 + app.margin
+            x1 = (col + 1) * 100 + app.margin
+            y0 = row * 100 + app.margin
+            y1 = (row + 1) * 100 + app.margin
+            if (2 <= row <= 4 and 2 <= col <= 5):
+                canvas.create_image((x0 + x1)/2, (y0 + y1)/2, image = iconBg)
+                if (cabinetIndex < len(app.cabinetItems)):
+                    item = app.cabinetItems[cabinetIndex]
+                    sprite = item.sprite
+                    sprite = getCachedPhotoImage(app, sprite)
+                    cx, cy = (x0 + x1)/2, (y0 + y1)/2
+                    canvas.create_image(cx, cy, image= sprite)
+                    item.loc = (cx, cy)
+                    canvas.create_text(cx, y0, text = f"{item.name}",
+                                        font = f"{app.font} 10", anchor = "n")
+                    cabinetIndex += 1
 
 def homeMode_drawFridge(app, canvas):
-    recipeBook = getCachedPhotoImage(app, app.recipeSprite)
-    canvas.create_image(app.width//2, app.height//2, image = recipeBook)
-    for i in range(len(app.fridgeItems)):
-        item = app.fridgeItems[i]
-        canvas.create_text(200, 200 + i * 50, text = item.name)
-        item.loc = (200, 200 + i * 50)
     journalClose = getCachedPhotoImage(app, app.journalCloseSprite)
     canvas.create_image(100, 200, image=journalClose)
+    rows, cols = len(app.inventoryGrid), len(app.inventoryGrid[0])
+    iconBg = app.scaleImage(app.sadFilter, 1/8)
+    iconBg = getCachedPhotoImage(app, iconBg)
+    canvas.create_text(250, 175, text = "fridge", 
+                    font = f"{app.font} 18 bold", fill = "white")
+    fridgeIndex = 0
+    for row in range(rows):
+        for col in range(cols):
+            x0 = col * 100 + app.margin
+            x1 = (col + 1) * 100 + app.margin
+            y0 = row * 100 + app.margin
+            y1 = (row + 1) * 100 + app.margin
+            if (2 <= row <= 4 and 2 <= col <= 5):
+                canvas.create_image((x0 + x1)/2, (y0 + y1)/2, image = iconBg)
+                if (fridgeIndex < len(app.fridgeItems)):
+                    item = app.fridgeItems[fridgeIndex]
+                    sprite = item.sprite
+                    sprite = getCachedPhotoImage(app, sprite)
+                    cx, cy = (x0 + x1)/2, (y0 + y1)/2
+                    canvas.create_image(cx, cy, image= sprite)
+                    item.loc = (cx, cy)
+                    canvas.create_text(cx, y0, text = f"{item.name}",
+                                        font = f"{app.font} 10", anchor = "n")
+                    fridgeIndex += 1
+
 
 def homeMode_drawUI(app, canvas):
+    if (app.goBedConfirm):
+        canvas.create_text(app.bedLoc[0], app.bedLoc[1] - 100, text = "go to bed? (g to confirm)",
+                            font = f"{app.font} 14 bold", fill = "white")
     if (app.displayCabinet):
         homeMode_drawCabinet(app, canvas)
 
@@ -1403,16 +1805,60 @@ def homeMode_drawUI(app, canvas):
     
     if (app.displayRecipe):
         gameMode_drawRecipeBook(app, canvas)
+        
+    if (app.displayJournal):
+        gameMode_drawJournal(app, canvas)
+    
+    if (app.homeTextTimer > 0):
+        homeMode_drawText(app, canvas)
 
-    journalOpen = getCachedPhotoImage(app, app.journalOpenSprite)
-    canvas.create_image(700, 75, image=journalOpen) #inventory
-    canvas.create_image(150, 75, image=journalOpen) #recipe 
-    bed = getCachedPhotoImage(app, app.bedSprite)
-    canvas.create_image(400, 650, image= bed) #inventory
+    journalOpen = getCachedPhotoImage(app, app.journalIcon.sprite)
+    canvas.create_image(app.journalIcon.loc[0], app.journalIcon.loc[1], image=journalOpen)
+    inventoryIc = getCachedPhotoImage(app, app.inventoryIcon.sprite)
+    canvas.create_image(app.inventoryIcon.loc[0], app.inventoryIcon.loc[1], image= inventoryIc)
+    recipeIc = getCachedPhotoImage(app, app.recipeIcon.sprite)
+    canvas.create_image(app.recipeIcon.loc[0], app.recipeIcon.loc[1], image= recipeIc)
 
+
+def drawHelpMode(app, canvas):
+    filter = getCachedPhotoImage(app, app.sadFilter)
+    canvas.create_image(400, 400, image= filter)
+    journalClose = getCachedPhotoImage(app, app.journalCloseSprite)
+    canvas.create_image(100, 200, image=journalClose)
+    canvas.create_text(400, 50, text = "help mode", font = "Fixedsys 18 bold",
+                        fill = "dark blue")
+    tutorialText = ["use the arrow keys to move",
+                     "click on fruit and plants to pick them",
+                     "check what items you have in the inventory",
+    "type to write in journal", "(who knows, something might change the next day!)",
+                "be sure to check which recipes you can cook before you go home!",
+                 "go to bed at home to move onto the next day"]
+    for i in range(len(tutorialText)):
+        canvas.create_text(400, 100 + (30 * i), text = f"{tutorialText[i]}",
+                            font = "Fixedsys 14", fill = "black")
+
+
+
+def startScreen_redrawAll(app, canvas):
+    gameMode_drawBackground(app, canvas)
+    gameMode_drawClouds(app, canvas)
+    filter = getCachedPhotoImage(app, app.happyFilter)
+    canvas.create_image(400, 400, image= filter)
+
+    canvas.create_text(400, 400, text = "perennial summer", fill = "black",
+                        font = "Fixedsys 48 bold")
+    canvas.create_text(app.startLoc[0], app.startLoc[1], text = "start", fill = "#386C9D",
+                        font = "Fixedsys 24 bold")
+    canvas.create_text(app.helpLoc[0], app.helpLoc[1], text = "help", fill = "#386C9D",
+                        font = "Fixedsys 24 bold")
+    if (app.isHelp):
+        drawHelpMode(app, canvas)
+    
 
 def homeMode_redrawAll(app, canvas):
-    if (app.goBed):
+    if (app.gameOver):
+        homeMode_drawEndScreen(app, canvas)
+    elif (app.goBed):
         homeMode_drawBed(app, canvas)
     else:
         homeMode_drawHome(app, canvas)
@@ -1436,5 +1882,8 @@ def gameMode_redrawAll(app, canvas):
     
     if (app.displayInventory):
         gameMode_drawInventory(app, canvas)
+    if (app.isHelp):
+            drawHelpMode(app, canvas)
+    
 
 runApp(width = 800, height = 800) 
